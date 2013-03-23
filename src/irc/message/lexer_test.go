@@ -4,7 +4,7 @@ import "testing"
 import "testing/assert"
 
 func TestLexer(t *testing.T) {
-  res := gen_lex("toto", "NICK lol")
+  res := gen_lex("toto", "NICK lol\r\n")
   go res.run()
 
   first := <-res.tokens

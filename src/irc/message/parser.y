@@ -14,6 +14,10 @@ import (
 
 %token WORD
 %token NICK
+%token USER
+%token JOIN
+%token PRIVMSG
+%token PONG
 %token EOF
 
 %type <val> WORD
@@ -23,14 +27,18 @@ import (
 goal:
     NICK WORD
     {
-        yylex.(*lex).m = $2
+        yylex.(*lex).m = MsgNick{Name:$2}
     }
 
+|   PONG WORD
+    {
+        yylex.(*lex).m = MsgPong{$2}
+    }
 %%
 
 type lex struct {
     tokens []token
-    m string
+    m interface{}
 }
 
 func (l *lex) Lex(lval *yySymType) int {
@@ -48,4 +56,17 @@ func (l *lex) Lex(lval *yySymType) int {
 
 func (l *lex) Error(e string) {
     log.Fatal(e)
+}
+
+func ParseMessage(msg string) interface{} {
+  log.Printf("Parsing %q", msg)
+  res := gen_lex("NICK", msg)
+  go res.run()
+  tokens := []token{}
+  for el := range res.tokens {
+    tokens = append(tokens, el)
+  }
+  l := &lex{tokens:tokens}
+  yyParse(l)
+  return l.m
 }

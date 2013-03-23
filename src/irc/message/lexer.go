@@ -4,9 +4,6 @@ import "fmt"
 import "unicode/utf8"
 import "strings"
 import "log"
-import "os"
-
-var logger = log.New(os.Stdout, "lexer", log.Lshortfile)
 
 type token struct {
         tok int
@@ -28,7 +25,7 @@ type lexer struct {
 const ( eof rune = 0 )
 
 func (l * lexer) emit(t int) {
-        logger.Printf("Emitting %d, start %d, pos %d, str '%s'\n",
+        log.Printf("Emitting %d, start %d, pos %d, str '%s'\n",
                        t, l.pos, l.start, l.input[l.start:l.pos])
         l.tokens <- token{t, l.input[l.start:l.pos]}
         l.start = l.pos
@@ -36,6 +33,10 @@ func (l * lexer) emit(t int) {
 
 func (l * lexer) next() (r rune) {
         if l.pos >= len(l.input) {
+                l.width = 0
+                return eof
+        }
+        if l.input[l.pos:] == "\r\n" {
                 l.width = 0
                 return eof
         }
@@ -49,13 +50,21 @@ func (l *lexer) ignore() { l.start = l.pos }
 func (l *lexer) backup() { l.pos -= l.width }
 
 func firstWord(l *lexer) stateFn {
-        logger.Printf("First word state, start %d, pos %d\n",
+        log.Printf("First word state, start %d, pos %d\n",
                        l.start, l.pos)
         for {
                 if l.pos < len(l.input) && l.input[ l.pos ] == ' ' {
                         switch l.input[ l.start:l.pos ] {
                         case "NICK":
                                 l.emit(NICK)
+                        case "PONG":
+                                l.emit(PONG)
+                        case "USER":
+                                l.emit(USER)
+                        case "JOIN":
+                                l.emit(JOIN)
+                        case "PRIVMSG":
+                                l.emit(PRIVMSG)
                         default:
                                 l.emit(WORD)
                         }
@@ -74,12 +83,13 @@ func imInSpace(l *lexer) stateFn {
                         return lexText
                 }
         }
-        panic("Shoud not happen\n")
+        panic("Shoud not happen")
 }
 
 func lexText(l *lexer) stateFn {
         for {
-                if l.pos < len(l.input) && l.input[ l.pos ] == ' ' {
+                if l.pos > len(l.input) { break }
+                if l.input[ l.pos ] == ' ' {
                         l.emit(WORD)
                         return imInSpace
                 }

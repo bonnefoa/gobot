@@ -12,6 +12,6 @@ func AssertEquals(t *testing.T, a interface{}, b interface{}) {
 }
 
 func TestMessage(t *testing.T) {
-  a := MsgNick{ name:"to"}
+  a := MsgNick{ Name:"to"}
   AssertEquals(t, a.String(), "NICK to\r\n")
 }

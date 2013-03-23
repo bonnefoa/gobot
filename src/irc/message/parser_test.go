@@ -3,21 +3,18 @@ package message
 import (
   "testing"
   "testing/assert"
+  "fmt"
 )
 
-func TestParse(t *testing.T) {
-  msg := "NICK 4"
-  res := gen_lex("NICK", msg)
-  go res.run()
-  tokens := []token{}
-  for el := range res.tokens {
-    tokens = append(tokens, el)
-  }
-  t.Logf("%s", tokens)
+func testMessageParse(t *testing.T, msg fmt.Stringer) {
+  res := ParseMessage(msg.String())
+  assert.AssertEquals(t, res, msg)
+}
 
-  l := &lex{tokens:tokens}
+func TestParseNick(t *testing.T) {
+  testMessageParse(t, MsgNick{ "4" })
+}
 
-  yyParse(l)
-  t.Logf("%s\n", l.m)
-  assert.AssertEquals(t, l.m, "4")
+func TestParsePong(t *testing.T) {
+  testMessageParse(t, MsgPong{"ping"})
 }
