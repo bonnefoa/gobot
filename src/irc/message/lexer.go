@@ -55,6 +55,8 @@ func firstWord(l *lexer) stateFn {
         for {
                 if l.pos < len(l.input) && l.input[ l.pos ] == ' ' {
                         switch l.input[ l.start:l.pos ] {
+                        case "QUIT":
+                                l.emit(QUIT)
                         case "NICK":
                                 l.emit(NICK)
                         case "PONG":

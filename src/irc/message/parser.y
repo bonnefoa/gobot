@@ -19,6 +19,7 @@ import (
 %token PRIVMSG
 %token PONG
 %token EOF
+%token QUIT
 
 %type <val> WORD
 
@@ -29,11 +30,23 @@ goal:
     {
         yylex.(*lex).m = MsgNick{Name:$2}
     }
-
 |   PONG WORD
     {
         yylex.(*lex).m = MsgPong{$2}
     }
+|   QUIT WORD
+    {
+        yylex.(*lex).m = MsgQuit{$2}
+    }
+|   PRIVMSG WORD WORD
+    {
+        yylex.(*lex).m = MsgPrivate{$2, $3}
+    }
+|   JOIN WORD
+    {
+        yylex.(*lex).m = MsgJoin{$2}
+    }
+
 %%
 
 type lex struct {

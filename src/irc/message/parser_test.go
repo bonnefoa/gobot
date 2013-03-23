@@ -18,3 +18,7 @@ func TestParseNick(t *testing.T) {
 func TestParsePong(t *testing.T) {
   testMessageParse(t, MsgPong{"ping"})
 }
+
+func TestParseQuit(t *testing.T) {
+  testMessageParse(t, MsgQuit{"ping"})
+}
