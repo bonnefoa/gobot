@@ -53,12 +53,18 @@ func firstWord(l *lexer) stateFn {
         log.Printf("First word state, start %d, pos %d\n",
                        l.start, l.pos)
         for {
-                if l.pos < len(l.input) && l.input[ l.pos ] == ' ' {
+                if l.pos >= len(l.input) {
+                        l.emit(INVALID)
+                        return nil
+                }
+                if l.input[ l.pos ] == ' ' {
                         switch l.input[ l.start:l.pos ] {
                         case "QUIT":
                                 l.emit(QUIT)
                         case "NICK":
                                 l.emit(NICK)
+                        case "PING":
+                                l.emit(PING)
                         case "PONG":
                                 l.emit(PONG)
                         case "USER":
@@ -68,13 +74,14 @@ func firstWord(l *lexer) stateFn {
                         case "PRIVMSG":
                                 l.emit(PRIVMSG)
                         default:
-                                l.emit(WORD)
+                                l.emit(INVALID)
+                                return nil
                         }
                         return imInSpace
                 }
                 l.next()
         }
-        return lexText
+        panic("First word should return in the for loop")
 }
 
 func imInSpace(l *lexer) stateFn {

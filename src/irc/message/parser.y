@@ -4,12 +4,14 @@ package message
 import (
     "log"
     "fmt"
+    "strings"
 )
 %}
 
 %union{
     tok int
     val string
+    text string
 }
 
 %token WORD
@@ -18,33 +20,55 @@ import (
 %token JOIN
 %token PRIVMSG
 %token PONG
+%token PING
 %token EOF
+%token INVALID
 %token QUIT
 
 %type <val> WORD
+%type <text> text
 
 %%
 
 goal:
-    NICK WORD
+    NICK text
     {
         yylex.(*lex).m = MsgNick{Name:$2}
     }
-|   PONG WORD
+|   PING text
+    {
+        yylex.(*lex).m = MsgPing{$2}
+    }
+|   PONG text
     {
         yylex.(*lex).m = MsgPong{$2}
     }
-|   QUIT WORD
+|   QUIT text
     {
         yylex.(*lex).m = MsgQuit{$2}
     }
-|   PRIVMSG WORD WORD
+|   PRIVMSG WORD text
     {
         yylex.(*lex).m = MsgPrivate{$2, $3}
     }
-|   JOIN WORD
+|   JOIN text
     {
         yylex.(*lex).m = MsgJoin{$2}
+    }
+|   INVALID
+    {
+        yylex.(*lex).m = nil
+    }
+
+text:
+    text WORD
+    {
+        s := []string{$1, $2}
+        $$ = (strings.Join(s, " "))
+    }
+|   WORD
+    {
+        $$ = $1
     }
 
 %%

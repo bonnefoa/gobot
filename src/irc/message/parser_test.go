@@ -20,5 +20,9 @@ func TestParsePong(t *testing.T) {
 }
 
 func TestParseQuit(t *testing.T) {
-  testMessageParse(t, MsgQuit{"ping"})
+  testMessageParse(t, MsgQuit{"quit bis repetita"})
+}
+
+func TestParseInvalid(t *testing.T) {
+  assert.AssertEquals(t, ParseMessage("Invalid"), nil)
 }
