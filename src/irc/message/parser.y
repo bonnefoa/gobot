@@ -2,35 +2,35 @@
 package message
 
 import (
-    "fmt"
     "log"
+    "fmt"
 )
 %}
 
 %union{
-    typ int
+    tok int
     val string
 }
 
-%token NAME
+%token WORD
+%token NICK
 %token EOF
 
-%type <val> NAME
-%type <eof> EOF
+%type <val> WORD
 
 %%
 
 goal:
-        'NICK' NAME EOF
+    NICK WORD
     {
-        yylex.(*lex).r = $2
+        yylex.(*lex).m = $2
     }
 
 %%
 
 type lex struct {
-    tokens []item
-    r string
+    tokens []token
+    m string
 }
 
 func (l *lex) Lex(lval *yySymType) int {
@@ -40,7 +40,10 @@ func (l *lex) Lex(lval *yySymType) int {
     v := l.tokens[0]
     l.tokens = l.tokens[1:]
     lval.val = v.val
-    return int(v.typ)
+    if ( v.tok == EOF ) {
+        return 0
+    }
+    return v.tok
 }
 
 func (l *lex) Error(e string) {

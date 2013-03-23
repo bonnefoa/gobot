@@ -4,15 +4,15 @@ import "testing"
 import "testing/assert"
 
 func TestLexer(t *testing.T) {
-  res := gen_lex("toto", "toto lol")
+  res := gen_lex("toto", "NICK lol")
   go res.run()
 
-  first := <-res.items
-  assert.AssertEquals(t, first.typ, itemWord)
-  assert.AssertEquals(t, first.val, "toto")
-  second := <-res.items
-  assert.AssertEquals(t, second.typ, itemWord)
+  first := <-res.tokens
+  assert.AssertEquals(t, first.tok, NICK)
+  assert.AssertEquals(t, first.val, "NICK")
+  second := <-res.tokens
+  assert.AssertEquals(t, second.tok, WORD)
   assert.AssertEquals(t, second.val, "lol")
-  third := <-res.items
-  assert.AssertEquals(t, third.typ, itemEOF)
+  third := <-res.tokens
+  assert.AssertEquals(t, third.tok, EOF)
 }
