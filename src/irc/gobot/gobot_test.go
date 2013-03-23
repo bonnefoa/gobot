@@ -1,8 +1,8 @@
 package main
 
 import "testing"
-import "fmt"
 
 func TestBot(t *testing.T) {
-  fmt.Printf("Testing\n")
+        bs := []byte("Test")
+        t.Fatal(string(bs[:3]))
 }
