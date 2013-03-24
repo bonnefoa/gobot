@@ -5,7 +5,7 @@ import "time"
 import "os"
 import "testing/assert"
 
-func testSimpleBet(t *testing.T) {
+func TestSimpleBet(t *testing.T) {
         os.Remove("test.db")
         db := InitBase("test.db")
         GetOrCreateBet(db)
@@ -21,7 +21,21 @@ func testSimpleBet(t *testing.T) {
         assert.AssertEquals(t, expecetedWinners[1], closestBet[1])
         CloseBet(db, time.Now())
 
-        scores := GetScores(db)
-        expectedScores := map[string] int {"near":1, "near2":1}
-        assert.AssertEquals(t, expectedScores, scores)
+        var scores map[string]int
+        scores = GetScores(db)
+        expectedScores := map[string] int {"near":1, "near2":1,
+                "before":0, "after":0}
+        assert.AssertMapEquals(t, expectedScores, scores)
+
+        good2 := time.Now()
+        AddUserBet(db, "near", good2)
+        AddUserBet(db, "before", good2)
+        AddUserBet(db, "after", good2.Add(time.Hour))
+
+        CloseBet(db, good2)
+
+        scores = GetScores(db)
+        expectedScores2 := map[string] int {"near":2, "near2":1,
+                "before":1, "after":0}
+        assert.AssertMapEquals(t, expectedScores2, scores)
 }

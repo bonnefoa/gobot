@@ -61,23 +61,27 @@ func GetBet(db *sql.DB) int {
 
 func AddUserBet(db *sql.DB, nick string, ts time.Time) {
         timeStr := ts.Format("2006-01-02 15:04:05")
-        cur := GetBet(db)
+        cur := GetOrCreateBet(db)
         if cur == 0 { log.Fatal("Could not get bet\n") }
         log.Printf("User %s is setting a bet (id %d) at %s\n", nick, cur, timeStr)
         execInsert(db, "REPLACE INTO userBet values (?, ?, ?);", nick , cur, timeStr)
+        execInsert(db, "INSERT OR IGNORE INTO betScore(nick) values (?);", nick)
 }
 
 func CloserBet(db *sql.DB, ts time.Time) []string {
         var err error
+        curBet := GetBet(db)
+        if curBet == 0 { return []string {} }
         timeStr := ts.Format("2006-01-02 15:04:05")
         log.Printf("Getting closer bet to %s\n", timeStr)
         rows := prepareSelect(db, `
              SELECT nick
              FROM userBet,
-                  ( SELECT min( ABS( julianday(userBet.time) - julianday(?) ) )
-                           AS minTime FROM userBet) m
-             WHERE m.minTime = ABS( julianday(userBet.time) - julianday(?) );
-            `, timeStr, timeStr)
+                  (SELECT min( ABS( julianday(userBet.time) - julianday(?) ) )
+                   AS minTime FROM userBet WHERE betId = ? ) m
+             WHERE m.minTime = ABS( julianday(userBet.time) - julianday(?) )
+                   AND betId = ?;
+            `, timeStr, curBet, timeStr, curBet)
         var nicks []string
         for rows.Next() {
                 var nick string
@@ -89,9 +93,19 @@ func CloserBet(db *sql.DB, ts time.Time) []string {
         return nicks
 }
 
+func IncrementNicks(db *sql.DB, nicks []string) {
+        for _, nick := range nicks {
+                log.Printf("Incrementing nick %s\n", nick)
+                execInsert(db,
+                "UPDATE betScore SET score=score+1 WHERE nick = ?;", nick)
+        }
+}
+
 func CloseBet(db *sql.DB, ts time.Time) {
         timeStr := ts.Format("2006-01-02 15:04:05")
         log.Printf("Closing bet with time %s\n", timeStr)
+        nicks := CloserBet(db, ts)
+        IncrementNicks(db, nicks)
         execInsert(db, "UPDATE bet SET time = ? WHERE time IS NULL;", timeStr)
 }
 
@@ -99,10 +113,10 @@ func GetScores(db *sql.DB) map[string] int {
         rows := prepareSelect(db, `
              SELECT nick, score
              FROM betScore
-             ORDER BY score DESC
-             )`)
+             ORDER BY score DESC;
+             `)
         var err error
-        var res map[string]int
+        res := make(map[string]int)
         for rows.Next() {
                 var nick string
                 var score int
@@ -123,7 +137,7 @@ func InitBase(dbPath string) *sql.DB {
         }
         createTable(db, `create table if not exists betScore(
                 nick text not null primary key,
-                score integer
+                score integer DEFAULT 0
         );`)
         createTable(db, `create table if not exists bet(
                 id integer not null primary key,
