@@ -5,6 +5,17 @@ import "time"
 import "os"
 import "testing/assert"
 
+func TestCheckBetMessage(t *testing.T) {
+        now := time.Now()
+        expected := time.Date(now.Year(), now.Month(), now.Day(),
+                11, 40, 0, 0, now.Location())
+        res, _ := CheckBetMessage("11h40")
+        assert.AssertEquals(t, expected, res)
+
+        _, err := CheckBetMessage("11h40")
+        assert.AssertNotNil(t, err)
+}
+
 func TestSimpleBet(t *testing.T) {
         os.Remove("test.db")
         db := InitBase("test.db")

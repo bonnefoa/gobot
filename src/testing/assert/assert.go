@@ -10,6 +10,12 @@ func AssertMapEquals(t *testing.T, a map[string] int, b map[string] int) {
         }
 }
 
+func AssertNotNil(t *testing.T, a interface{}) {
+        if a != nil {
+                t.Fatal("Expected not nil pointer, got '%v'\n", a)
+        }
+}
+
 func AssertEquals(t *testing.T, a interface{}, b interface{}) {
         if a != b {
                 t.Fatal("Expected '%v', got '%v'\n", a, b)

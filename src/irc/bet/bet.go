@@ -101,12 +101,13 @@ func IncrementNicks(db *sql.DB, nicks []string) {
         }
 }
 
-func CloseBet(db *sql.DB, ts time.Time) {
+func CloseBet(db *sql.DB, ts time.Time) []string {
         timeStr := ts.Format("2006-01-02 15:04:05")
         log.Printf("Closing bet with time %s\n", timeStr)
         nicks := CloserBet(db, ts)
         IncrementNicks(db, nicks)
         execInsert(db, "UPDATE bet SET time = ? WHERE time IS NULL;", timeStr)
+        return nicks
 }
 
 func GetScores(db *sql.DB) map[string] int {
@@ -150,4 +151,15 @@ func InitBase(dbPath string) *sql.DB {
                 FOREIGN KEY(betId) REFERENCES bet(id)
         );`)
         return db
+}
+
+func CheckBetMessage(msg string) (time.Time, error) {
+        now := time.Now()
+        ts, err := time.Parse("15h04", msg)
+        if err != nil {
+                return now, err
+        }
+        res := time.Date(now.Year(), now.Month(), now.Day(),
+                ts.Hour(), ts.Minute(),0 ,0, now.Location())
+        return res, err
 }
