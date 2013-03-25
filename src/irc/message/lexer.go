@@ -52,6 +52,10 @@ func (l *lexer) backup() { l.pos -= l.width }
 func firstWord(l *lexer) stateFn {
         log.Printf("First word state, start %d, pos %d\n",
                        l.start, l.pos)
+        if l.input[ l.pos ] == ':' {
+                l.next()
+                l.emit(COLUMN)
+        }
         for {
                 if l.pos >= len(l.input) {
                         l.emit(INVALID)
@@ -74,14 +78,35 @@ func firstWord(l *lexer) stateFn {
                         case "PRIVMSG":
                                 l.emit(PRIVMSG)
                         default:
-                                l.emit(INVALID)
-                                return nil
+                                l.emit(WORD)
+                                return maybeInMsg
                         }
                         return imInSpace
                 }
                 l.next()
         }
         panic("First word should return in the for loop")
+}
+
+func maybeInMsg(l *lexer) stateFn {
+        l.next()
+        l.ignore()
+        for {
+                if l.pos >= len(l.input) {
+                        l.emit(INVALID)
+                        return nil
+                }
+                if l.input[ l.pos ] == ' ' {
+                        if l.input[ l.start:l.pos ] == "PRIVMSG" {
+                                l.emit(PRIVMSG)
+                                return imInSpace
+                        }
+                        l.emit(INVALID)
+                        return nil
+                }
+                l.next()
+        }
+        panic("Shoud not happen")
 }
 
 func imInSpace(l *lexer) stateFn {
@@ -96,6 +121,11 @@ func imInSpace(l *lexer) stateFn {
 }
 
 func lexText(l *lexer) stateFn {
+        if l.input[ l.pos ] == ':' {
+                l.next()
+                l.emit(COLUMN)
+                return lexText
+        }
         for {
                 if l.pos > len(l.input) { break }
                 if l.input[ l.pos ] == ' ' {

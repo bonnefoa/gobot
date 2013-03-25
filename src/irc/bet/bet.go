@@ -1,10 +1,10 @@
 package bet
 
 import (
-  "database/sql"
-  _ "github.com/mattn/go-sqlite3"
-  "log"
-  "time"
+        "database/sql"
+        _ "github.com/mattn/go-sqlite3"
+        "log"
+        "time"
 )
 
 func createTable(db *sql.DB, query string) {

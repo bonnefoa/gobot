@@ -1,18 +1,21 @@
 package main
 
 import (
-  "irc/message"
-  "log"
-  "crypto/tls"
-  "fmt"
-  "encoding/json"
-  "os"
+        "irc/message"
+        "log"
+        "crypto/tls"
+        "fmt"
+        "encoding/json"
+        "os"
+        "irc/bet"
+        "database/sql"
 )
 
 type BotConf struct {
         Server string
         Password string
         Channel string
+        Db string
 }
 
 func readConfigurationFile(filename string) BotConf {
@@ -40,12 +43,14 @@ func readConnection(conn *tls.Conn, readChannel chan []byte, errorChannel chan e
         }
 }
 
-func dispatchMessage(msg string, responseChannel chan fmt.Stringer) {
+func dispatchMessage(db *sql.DB, msg string, responseChannel chan fmt.Stringer) {
         switch parsed := message.ParseMessage(msg).(type) {
         case message.MsgPing:
                 responseChannel <- message.MsgPong{parsed.Ping}
+        case message.MsgPrivate:
+                log.Printf("Received message %s from %s\n", parsed.Msg, parsed.User)
         default:
-             log.Printf("No switch matched for %s!\n", parsed)
+                log.Printf("No switch matched for %s!\n", parsed)
         }
 }
 
@@ -58,6 +63,8 @@ func join(conf BotConf, responseChannel chan fmt.Stringer) {
 
 func connect() {
         conf := readConfigurationFile("gobot.json")
+
+        db := bet.InitBase(conf.Db)
         responseChannel := make(chan fmt.Stringer)
         readChannel := make(chan []byte)
         errorChannel := make(chan error)
@@ -77,7 +84,7 @@ func connect() {
                 select {
                 case data := <-readChannel:
                         log.Printf("Got data %q\n", data)
-                        go dispatchMessage(string(data), responseChannel)
+                        go dispatchMessage(db, string(data), responseChannel)
                 case err := <-errorChannel:
                         log.Fatal("Got error %q\n", err)
                 case response := <-responseChannel:

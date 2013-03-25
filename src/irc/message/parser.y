@@ -23,53 +23,54 @@ import (
 %token PING
 %token EOF
 %token INVALID
+%token COLUMN
 %token QUIT
 
-%type <val> WORD
-%type <text> text
+%type <val> WORD COLUMN PRIVMSG text
 
 %%
 
 goal:
-    NICK text
-    {
-        yylex.(*lex).m = MsgNick{Name:$2}
-    }
-|   PING text
-    {
-        yylex.(*lex).m = MsgPing{$2}
-    }
-|   PONG text
-    {
-        yylex.(*lex).m = MsgPong{$2}
-    }
-|   QUIT text
-    {
-        yylex.(*lex).m = MsgQuit{$2}
-    }
-|   PRIVMSG WORD text
-    {
-        yylex.(*lex).m = MsgPrivate{$2, $3}
-    }
-|   JOIN text
-    {
-        yylex.(*lex).m = MsgJoin{$2}
-    }
-|   INVALID
-    {
-        yylex.(*lex).m = nil
-    }
+        NICK text
+        {
+            yylex.(*lex).m = MsgNick{Name:$2}
+        }
+    |   PING text
+        {
+            yylex.(*lex).m = MsgPing{$2}
+        }
+    |   PONG text
+        {
+            yylex.(*lex).m = MsgPong{$2}
+        }
+    |   QUIT text
+        {
+            yylex.(*lex).m = MsgQuit{$2}
+        }
+    |   COLUMN WORD PRIVMSG WORD COLUMN text
+        {
+            yylex.(*lex).m = MsgPrivate{$2, $4, $6}
+        }
+    |   JOIN text
+        {
+            yylex.(*lex).m = MsgJoin{$2}
+        }
+    |   INVALID
+        {
+            yylex.(*lex).m = nil
+        }
 
 text:
-    text WORD
-    {
-        s := []string{$1, $2}
-        $$ = (strings.Join(s, " "))
-    }
-|   WORD
-    {
-        $$ = $1
-    }
+        text WORD
+        {
+            s := []string{$1, $2}
+            $$ = (strings.Join(s, " "))
+        }
+    |   WORD
+        {
+            $$ = $1
+        }
+
 
 %%
 
@@ -92,12 +93,12 @@ func (l *lex) Lex(lval *yySymType) int {
 }
 
 func (l *lex) Error(e string) {
-    log.Fatal(e)
+    log.Printf(e)
 }
 
 func ParseMessage(msg string) interface{} {
   log.Printf("Parsing %q", msg)
-  res := gen_lex("NICK", msg)
+  res := gen_lex("Irc parser", msg)
   go res.run()
   tokens := []token{}
   for el := range res.tokens {
