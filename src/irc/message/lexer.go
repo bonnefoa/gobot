@@ -26,7 +26,7 @@ const ( eof rune = 0 )
 
 func (l * lexer) emit(t int) {
         log.Printf("Emitting %d, start %d, pos %d, str '%s'\n",
-                       t, l.pos, l.start, l.input[l.start:l.pos])
+                       t, l.start, l.pos, l.input[l.start:l.pos])
         l.tokens <- token{t, l.input[l.start:l.pos]}
         l.start = l.pos
 }
@@ -34,11 +34,7 @@ func (l * lexer) emit(t int) {
 func (l * lexer) next() (r rune) {
         if l.pos >= len(l.input) {
                 l.width = 0
-                return eof
-        }
-        if l.input[l.pos:] == "\r\n" {
-                l.width = 0
-                return eof
+                return EOL
         }
         r, l.width = utf8.DecodeRuneInString(l.input[l.pos:])
         l.pos += l.width
@@ -121,13 +117,25 @@ func imInSpace(l *lexer) stateFn {
 }
 
 func lexText(l *lexer) stateFn {
+        log.Printf("Lex text, start %d, pos %d\n",
+                       l.start, l.pos)
         if l.input[ l.pos ] == ':' {
                 l.next()
                 l.emit(COLUMN)
                 return lexText
         }
         for {
-                if l.pos > len(l.input) { break }
+                if l.pos >= len(l.input) { break }
+                if l.pos + 2 <= len(l.input) && l.input[ l.pos:l.pos + 2] == "\r\n" {
+                        l.emit(WORD)
+                        l.next()
+                        l.next()
+                        l.emit(EOF)
+                        if l.pos >= len(l.input) {
+                          return nil
+                        }
+                        return firstWord
+                }
                 if l.input[ l.pos ] == ' ' {
                         l.emit(WORD)
                         return imInSpace
@@ -189,8 +197,8 @@ func gen_lex(name, input string) *lexer {
 
 func (i token) String() string {
         switch i.tok {
-        case EOF:
-                return "EOF"
+        case EOL:
+                return "EOL"
         }
         if len(i.val) > 10 {
                 return fmt.Sprintf("%.10q...", i.val)
