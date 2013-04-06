@@ -5,6 +5,7 @@ import (
         _ "github.com/mattn/go-sqlite3"
         "log"
         "time"
+        "errors"
 )
 
 func createTable(db *sql.DB, query string) {
@@ -40,13 +41,28 @@ func CreateUser(db *sql.DB, nick string) {
 }
 
 func GetOrCreateBet(db *sql.DB) int {
-        res := GetBet(db)
+        res := GetCurrentBet(db)
         if res != 0 { return res }
         execInsert(db, "INSERT INTO bet values (NULL, NULL);")
-        return GetBet(db)
+        return GetCurrentBet(db)
 }
 
-func GetBet(db *sql.DB) int {
+func GetLastBet(db *sql.DB) (int, time.Time) {
+        var err error
+        rows := prepareSelect(db, "SELECT id, time FROM bet ORDER BY time DESC LIMIT 1;")
+        var id int
+        var ts time.Time
+        if rows.Next() {
+                err = rows.Scan(&id, &ts)
+                log.Printf("id %s, ts val %s\n", id, ts)
+                err = rows.Close()
+                if err != nil { log.Fatal(err) }
+                return id, ts
+        }
+        return 0, time.Now()
+}
+
+func GetCurrentBet(db *sql.DB) int {
         var err error
         rows := prepareSelect(db, "SELECT id FROM bet WHERE time IS NULL;")
         var id int
@@ -59,20 +75,35 @@ func GetBet(db *sql.DB) int {
         return 0
 }
 
-func AddUserBet(db *sql.DB, nick string, ts time.Time) {
-        timeStr := ts.Format("2006-01-02 15:04:05")
+func AddUserBet(db *sql.DB, nick string, ts time.Time, isAdmin bool) error {
+        now := ConvertTimeToUTC(time.Now())
+        ts = ConvertTimeToUTC(ts)
+        timeStr := FormatTimeInUTC(ts)
         cur := GetOrCreateBet(db)
         if cur == 0 { log.Fatal("Could not get bet\n") }
-        log.Printf("User %s is setting a bet (id %d) at %s\n", nick, cur, timeStr)
-        execInsert(db, "REPLACE INTO userBet values (?, ?, ?);", nick , cur, timeStr)
-        execInsert(db, "INSERT OR IGNORE INTO betScore(nick) values (?);", nick)
+        existing_ts := GetUserBet(db, cur, nick)
+        if !isAdmin && ts.Before(now) {
+            return errors.New("You are betting in the past, noob.")
+        }
+        if !isAdmin && existing_ts != nil {
+          if existing_ts.After(now) && existing_ts.Before(now.Add(time.Minute * 4))  {
+              return errors.New("Your bet time is in less than 4 minutes, you can't change it.")
+          }
+          if existing_ts.Before(now) && existing_ts.Add(time.Hour * 1).After(now) {
+              return errors.New("Your bet is in the past, you can't change it.")
+          }
+      }
+      log.Printf("User %s is setting a bet (id %d) at %s\n", nick, cur, timeStr)
+      execInsert(db, "REPLACE INTO userBet values (?, ?, ?);", nick , cur, timeStr)
+      execInsert(db, "INSERT OR IGNORE INTO betScore(nick) values (?);", nick)
+      return nil
 }
 
 func CloserBet(db *sql.DB, ts time.Time) []string {
         var err error
-        curBet := GetBet(db)
+        curBet := GetCurrentBet(db)
         if curBet == 0 { return []string {} }
-        timeStr := ts.Format("2006-01-02 15:04:05")
+        timeStr := FormatTimeInUTC(ts)
         log.Printf("Getting closer bet to %s\n", timeStr)
         rows := prepareSelect(db, `
              SELECT nick
@@ -93,21 +124,71 @@ func CloserBet(db *sql.DB, ts time.Time) []string {
         return nicks
 }
 
-func IncrementNicks(db *sql.DB, nicks []string) {
+func IncrementNicks(db *sql.DB, nicks []string, val int) {
         for _, nick := range nicks {
-                log.Printf("Incrementing nick %s\n", nick)
+                log.Printf("Incrementing nick %s by %d\n", nick, val)
                 execInsert(db,
-                "UPDATE betScore SET score=score+1 WHERE nick = ?;", nick)
+                "UPDATE betScore SET score=score+? WHERE nick = ?;", val, nick)
         }
 }
 
 func CloseBet(db *sql.DB, ts time.Time) []string {
-        timeStr := ts.Format("2006-01-02 15:04:05")
+        ts = ConvertTimeToUTC(ts)
+        timeStr := FormatTimeInUTC(ts)
         log.Printf("Closing bet with time %s\n", timeStr)
         nicks := CloserBet(db, ts)
-        IncrementNicks(db, nicks)
+        IncrementNicks(db, nicks, 1)
         execInsert(db, "UPDATE bet SET time = ? WHERE time IS NULL;", timeStr)
         return nicks
+}
+
+func ResetBet(db *sql.DB) {
+  cur := GetOrCreateBet(db)
+  execInsert(db, "DELETE FROM userBet WHERE betId = ?;", cur)
+}
+
+func RollbackLastBet(db *sql.DB) {
+         execInsert(db, "DELETE FROM bet WHERE time IS NULL;")
+         id, ts := GetLastBet(db)
+         execInsert(db, "UPDATE bet SET time = NULL WHERE id = ?;", id)
+         nicks := CloserBet(db, ts)
+         IncrementNicks(db, nicks, -1)
+}
+
+func GetUserBet(db *sql.DB, betId int, nick string) * time.Time {
+        rows := prepareSelect(db, `
+             SELECT time
+             FROM userBet
+             WHERE betId = ? AND nick = ?;
+             `, betId, nick)
+        var err error
+        for rows.Next() {
+                var ts time.Time
+                err = rows.Scan(&ts)
+                err = rows.Close()
+                if err != nil { log.Fatal(err) }
+                return &ts
+        }
+        return nil
+}
+
+func GetUserBets(db *sql.DB, betId int) map[string] time.Time {
+        rows := prepareSelect(db, `
+             SELECT nick, time
+             FROM userBet
+             WHERE betId = ?;
+             `, betId)
+        var err error
+        res := make(map[string]time.Time)
+        for rows.Next() {
+                var nick string
+                var ts time.Time
+                err = rows.Scan(&nick, &ts)
+                res[nick] = ts
+        }
+        err = rows.Close()
+        if err != nil { log.Fatal(err) }
+        return res
 }
 
 func GetScores(db *sql.DB) map[string] int {
@@ -148,18 +229,39 @@ func InitBase(dbPath string) *sql.DB {
                 nick text not null,
                 betId not null,
                 time datetime not null,
-                FOREIGN KEY(betId) REFERENCES bet(id)
+                PRIMARY KEY (nick, betId)
         );`)
         return db
 }
 
-func CheckBetMessage(msg string) (time.Time, error) {
+func ParseHourLayout(msg string) (time.Time, error) {
         now := time.Now()
-        ts, err := time.Parse("15h04", msg)
+        var err error
+        var ts time.Time
+        hour_layouts := []string {  "15h04", "15:04", "15:04:05" }
+        for _, layout := range hour_layouts {
+          ts, err = time.Parse(layout, msg)
+          if err == nil { break }
+        }
         if err != nil {
                 return now, err
         }
         res := time.Date(now.Year(), now.Month(), now.Day(),
-                ts.Hour(), ts.Minute(),0 ,0, now.Location())
+                ts.Hour(), ts.Minute(), ts.Second(), 0, now.Location())
+        if res.Before(now) {
+          res = res.Add(time.Hour * 24)
+        }
         return res, err
+}
+
+func ParseDate(msg string) (time.Time, error) {
+        var err error
+        var ts time.Time
+
+        layouts := []string { time.RFC822, time.RFC850, time.RFC3339, time.RFC1123 }
+        for _, layout := range layouts  {
+          ts, err = time.Parse(layout, msg)
+          if err == nil { return ts, err }
+        }
+        return ParseHourLayout(msg)
 }
