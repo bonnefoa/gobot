@@ -11,6 +11,8 @@ import (
 %union{
     tok int
     val string
+    msg interface{}
+    messages []interface{}
     text string
 }
 
@@ -22,42 +24,62 @@ import (
 %token PONG
 %token PING
 %token EOF
+%token EOL
 %token INVALID
 %token COLUMN
 %token QUIT
 
 %type <val> WORD COLUMN PRIVMSG text
+%type <msg> msg
+%type <messages> messages
 
 %%
 
 goal:
+         messages
+{
+            yylex.(*lex).m = $1
+}
+
+messages:
+        messages msg
+{
+        $$ = append($1, $2)
+}
+|       msg
+{
+        m := []interface{}{$1}
+        $$ = m
+}
+
+msg:
         NICK text
         {
-            yylex.(*lex).m = MsgNick{Name:$2}
+            $$ = MsgNick{Name:$2}
         }
-    |   PING text
+    |   PING COLUMN text
         {
-            yylex.(*lex).m = MsgPing{$2}
+            $$ = MsgPing{$2}
         }
     |   PONG text
         {
-            yylex.(*lex).m = MsgPong{$2}
+            $$ = MsgPong{$2}
         }
     |   QUIT text
         {
-            yylex.(*lex).m = MsgQuit{$2}
+            $$ = MsgQuit{$2}
         }
     |   COLUMN WORD PRIVMSG WORD COLUMN text
         {
-            yylex.(*lex).m = MsgPrivate{$2, $4, $6}
+            $$ = MsgPrivate{$2, $4, $6}
         }
     |   JOIN text
         {
-            yylex.(*lex).m = MsgJoin{$2}
+            $$ = MsgJoin{$2}
         }
     |   INVALID
         {
-            yylex.(*lex).m = nil
+            $$ = nil
         }
 
 text:
@@ -65,6 +87,10 @@ text:
         {
             s := []string{$1, $2}
             $$ = (strings.Join(s, " "))
+        }
+    |   WORD EOF
+        {
+            $$ = $1
         }
     |   WORD
         {
@@ -76,7 +102,7 @@ text:
 
 type lex struct {
     tokens []token
-    m interface{}
+    m []interface{}
 }
 
 func (l *lex) Lex(lval *yySymType) int {
@@ -86,7 +112,7 @@ func (l *lex) Lex(lval *yySymType) int {
     v := l.tokens[0]
     l.tokens = l.tokens[1:]
     lval.val = v.val
-    if ( v.tok == EOF ) {
+    if ( v.tok == EOL ) {
         return 0
     }
     return v.tok
@@ -96,7 +122,7 @@ func (l *lex) Error(e string) {
     log.Printf(e)
 }
 
-func ParseMessage(msg string) interface{} {
+func ParseMessage(msg string) []interface{} {
   log.Printf("Parsing %q", msg)
   res := gen_lex("Irc parser", msg)
   go res.run()
