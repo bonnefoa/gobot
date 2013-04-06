@@ -23,7 +23,7 @@ func (msg MsgUser) String() string {
 }
 
 func (msg MsgPing) String() string {
-        return fmt.Sprintf("PING %s\r\n", msg.Ping)
+        return fmt.Sprintf("PING :%s\r\n", msg.Ping)
 }
 
 func (msg MsgPong) String() string {
@@ -53,4 +53,11 @@ func (msg MsgPassword) String() string {
 
 func (msg MsgPrivate) Nick() string {
         return msg.User[:strings.Index(msg.User, "!")]
+}
+
+func (msg MsgPrivate) Response() string {
+        if strings.HasPrefix(msg.Dest, "#") {
+               return msg.Dest
+        }
+        return msg.User
 }
