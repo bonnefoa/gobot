@@ -1,0 +1,11 @@
+{
+        "server" : "host:1337"
+        , "channel" : "#geek"
+        , "password" : "pass"
+        , "db" : "./gobot.db"
+        , "name" : "Gobot"
+        , "realname" : "GoGoBot"
+        , "admin" : "admin@admin.fr"
+        , "topper" : "topper@topper.info"
+        , "help" : "Make a bet by giving a date (rfc 822, 850, 1123, 3339 or 15h04, 15:04, 15:04:05). Print current scores with the <scores> command. Bet are closed on dd's top. You can't change your bet if your bet time is in the past or in less than 4 minutes"
+}
