@@ -59,7 +59,7 @@ msg:
         }
     |   PING COLUMN text
         {
-            $$ = MsgPing{$2}
+            $$ = MsgPing{$3}
         }
     |   PONG text
         {
@@ -83,7 +83,12 @@ msg:
         }
 
 text:
-        text WORD
+        text WORD EOF
+        {
+            s := []string{$1, $2}
+            $$ = (strings.Join(s, " "))
+        }
+    |   text WORD
         {
             s := []string{$1, $2}
             $$ = (strings.Join(s, " "))
