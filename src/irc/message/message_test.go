@@ -1,17 +1,11 @@
 package message
 
 import (
-  "testing"
+        "testing"
+        "testing/assert"
 )
 
-func AssertEquals(t *testing.T, a interface{}, b interface{}) {
-  if a != b {
-    t.Logf("expected %v to equal %v", a, b)
-    t.Fail()
-  }
-}
-
 func TestMessage(t *testing.T) {
-  a := MsgNick{ Name:"to"}
-  AssertEquals(t, a.String(), "NICK to\r\n")
+        a := MsgNick{ Name:"to"}
+        assert.AssertEquals(t, a.String(), "NICK to\r\n")
 }
