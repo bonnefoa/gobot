@@ -8,6 +8,9 @@ import (
         "database/sql"
         "strings"
         "time"
+        "errors"
+        "math/rand"
+        "utils/utilstring"
 )
 
 func placeBet(db *sql.DB, nick string, msg message.MsgPrivate, ts time.Time, responseChannel chan fmt.Stringer, isAdmin bool) {
@@ -21,18 +24,25 @@ func placeBet(db *sql.DB, nick string, msg message.MsgPrivate, ts time.Time, res
         }
 }
 
-func closeBet(db *sql.DB, msg message.MsgPrivate, ts time.Time, responseChannel chan fmt.Stringer) {
-        winners := bet.CloseBet(db, ts)
-        var resp string
+func formatWinners(winners []string, conf *BotConf) string {
         if len(winners) == 0 {
-          resp = fmt.Sprintf("No bet, no winners")
-        } else {
-          resp = fmt.Sprintf("Bet are closed, winnners are %s", winners)
+                return fmt.Sprintf("No bet, no winners")
         }
+        winStr := fmt.Sprintf("winners are %s", winners)
+        if len(winners) == 1 {
+                winStr = fmt.Sprintf("winner is %s", winners[0])
+        }
+        return fmt.Sprintf("Bet are closed, %s", winStr)
+}
+
+func closeBet(db *sql.DB, conf *BotConf, msg message.MsgPrivate,
+                ts time.Time, responseChannel chan fmt.Stringer) {
+        winners := bet.CloseBet(db, ts)
+        resp := formatWinners(winners, conf)
         responseChannel <- message.MsgSend{msg.Response(), resp}
 }
 
-func handleSpecificTop(db *sql.DB, conf BotConf, msg message.MsgPrivate,
+func handleSpecificTop(db *sql.DB, conf *BotConf, msg message.MsgPrivate,
                         responseChannel chan fmt.Stringer) bool {
         if strings.ToLower(msg.User) != conf.Topper && strings.ToLower(msg.User) != conf.Admin { return false }
         lower_msg := strings.ToLower(msg.Msg)
@@ -42,30 +52,34 @@ func handleSpecificTop(db *sql.DB, conf BotConf, msg message.MsgPrivate,
         now := time.Now()
         ts = time.Date(now.Year(), now.Month(), now.Day(), ts.Hour(),
                        ts.Minute(), ts.Second(), 0, now.Location())
-        closeBet(db, msg, ts, responseChannel)
+        closeBet(db, conf, msg, ts, responseChannel)
         return true
 }
 
-func handleTop(db *sql.DB, conf BotConf, msg message.MsgPrivate,
+func handleTop(db *sql.DB, conf *BotConf, msg message.MsgPrivate,
                         responseChannel chan fmt.Stringer) bool {
         if strings.ToLower(msg.Msg)!= "top" { return false }
         if strings.ToLower(msg.User) != conf.Topper && strings.ToLower(msg.User) != conf.Admin { return false }
-        closeBet(db, msg, time.Now(), responseChannel)
+        closeBet(db, conf, msg, time.Now(), responseChannel)
         return true
 }
 
-func handleScores(db *sql.DB, conf BotConf, msg message.MsgPrivate,
+func handleScores(db *sql.DB, conf *BotConf, msg message.MsgPrivate,
                         responseChannel chan fmt.Stringer) bool {
         if strings.ToLower(msg.Msg) != "scores" { return false }
         scores := bet.GetScores(db)
-        for k, v := range scores {
-          resp := fmt.Sprintf("%s %d", k, v)
+        nicks := make([]string, len(scores))
+        for _, score := range scores { nicks = append(nicks, score.String()) }
+        maxSize := getMaxNickLength(nicks)
+
+        for _, v := range scores {
+          resp := fmt.Sprintf("%*s %d", maxSize, v.Nick, v.Score)
           responseChannel <- message.MsgSend{msg.Response(), resp}
         }
         return true
 }
 
-func handlePlaceBet(db *sql.DB, conf BotConf, msg message.MsgPrivate,
+func handlePlaceBet(db *sql.DB, conf *BotConf, msg message.MsgPrivate,
                         responseChannel chan fmt.Stringer) bool {
         ts, err := bet.ParseDate(msg.Msg)
         if err != nil { return false }
@@ -73,7 +87,7 @@ func handlePlaceBet(db *sql.DB, conf BotConf, msg message.MsgPrivate,
         return true
 }
 
-func handlePlaceSpecificBet(db *sql.DB, conf BotConf, msg message.MsgPrivate,
+func handlePlaceSpecificBet(db *sql.DB, conf *BotConf, msg message.MsgPrivate,
                         responseChannel chan fmt.Stringer) bool {
         ts, err := bet.ParseDate(msg.Msg)
         if err != nil { return false }
@@ -81,8 +95,9 @@ func handlePlaceSpecificBet(db *sql.DB, conf BotConf, msg message.MsgPrivate,
         return true
 }
 
-func handleAdminBet(db *sql.DB, conf BotConf, msg message.MsgPrivate,
+func handleAdminBet(db *sql.DB, conf *BotConf, msg message.MsgPrivate,
                         responseChannel chan fmt.Stringer) bool {
+        if strings.ToLower(msg.User) != conf.Admin { return false }
         splitted := strings.Split(msg.Msg, " ")
         if len(splitted) == 0 { return false }
         ts, err := bet.ParseDate(strings.Join(splitted[:len(splitted)-1], " ") )
@@ -92,19 +107,94 @@ func handleAdminBet(db *sql.DB, conf BotConf, msg message.MsgPrivate,
         return true
 }
 
-func handleBet(db *sql.DB, conf BotConf, msg message.MsgPrivate,
-                        responseChannel chan fmt.Stringer) bool {
-        if strings.ToLower(msg.Msg) != "bet" { return false }
-        betId := bet.GetCurrentBet(db)
+func getMaxNickLength(nicks []string) int {
+        maxSize := 0
+        for _, user := range nicks {
+                lenNick := len(user)
+                if maxSize < lenNick { maxSize = lenNick }
+        }
+        return maxSize
+}
+
+func printSpecificBet(betId int, db *sql.DB, location *time.Location, msg message.MsgPrivate, responseChannel chan fmt.Stringer) {
         bets := bet.GetUserBets(db, betId)
-        for k, ts := range bets {
-          resp := fmt.Sprintf("%s %s", k, bet.ConvertTimeToLocal(ts))
+        nicks := make([]string, len(bets))
+        for _, bet := range bets { nicks = append(nicks, bet.String()) }
+        maxSize := getMaxNickLength(nicks)
+        for _, userBet := range bets {
+          resp := fmt.Sprintf("%*s %s", maxSize, userBet.Nick, userBet.Time.In(location))
           responseChannel <- message.MsgSend{msg.Response(), resp}
+        }
+}
+
+func printBet(db *sql.DB, location *time.Location, msg message.MsgPrivate, responseChannel chan fmt.Stringer) {
+        betId := bet.GetCurrentBet(db)
+        printSpecificBet(betId, db, location, msg, responseChannel)
+}
+
+func printLastBet(db *sql.DB, location *time.Location, msg message.MsgPrivate, responseChannel chan fmt.Stringer) {
+        betId, _ := bet.GetLastBet(db)
+        printSpecificBet(betId, db, location, msg, responseChannel)
+}
+
+func handleBet(db *sql.DB, conf *BotConf, msg message.MsgPrivate,
+                        responseChannel chan fmt.Stringer) bool {
+        location, _ := time.LoadLocation("Local")
+        if strings.HasPrefix(strings.ToLower(msg.Msg), "bet") {
+                printBet(db, location, msg, responseChannel)
+                return true
+        }
+        if strings.HasPrefix(strings.ToLower(msg.Msg), "last bet") {
+                printLastBet(db, location, msg, responseChannel)
+                return true
+        }
+        return false
+}
+
+func handleBetSpecificTimeZone(db *sql.DB, conf *BotConf, msg message.MsgPrivate,
+                        responseChannel chan fmt.Stringer) bool {
+        if !strings.HasPrefix(strings.ToLower(msg.Msg),  "bet") { return false }
+        location, err := time.LoadLocation(msg.Msg[4:])
+        if err != nil {
+          responseChannel <- message.MsgSend{msg.Response(), "Invalid timezone dude"}
+        } else {
+                printBet(db, location, msg, responseChannel)
         }
         return true
 }
 
-func handleRollback(db *sql.DB, conf BotConf, msg message.MsgPrivate,
+func parseTimezoneQuery(query string) (time.Time, error) {
+        var err error
+        var ts time.Time
+        ts = time.Now()
+        splitted := strings.Split(query, " ")
+        if len(splitted) < 3 {
+                return ts, errors.New("Too small")
+        }
+        possibleDate := strings.Join(splitted[:len(splitted)-2], " ")
+        log.Printf("Possible date %s", possibleDate)
+        ts, err = bet.ParseDate(possibleDate)
+        if err != nil {
+                return ts, err
+        }
+        locationStr := splitted[len(splitted) -1]
+        fmt.Printf("Location is %s\n", locationStr)
+        location, err := time.LoadLocation(locationStr)
+        if err != nil {
+                return ts, err
+        }
+        return ts.In(location), err
+}
+
+func handleTimezoneConversion(db *sql.DB, conf *BotConf, msg message.MsgPrivate,
+                        responseChannel chan fmt.Stringer) bool {
+        ts, err := parseTimezoneQuery(msg.Msg)
+        if err != nil { return false }
+        responseChannel <- message.MsgSend{msg.Response(), ts.String()}
+        return true
+}
+
+func handleRollback(db *sql.DB, conf *BotConf, msg message.MsgPrivate,
                         responseChannel chan fmt.Stringer) bool {
         if strings.ToLower(msg.Msg) != "rollback" { return false }
         if strings.ToLower(msg.User) != conf.Admin { return false }
@@ -113,7 +203,7 @@ func handleRollback(db *sql.DB, conf BotConf, msg message.MsgPrivate,
         return true
 }
 
-func handleReset(db *sql.DB, conf BotConf, msg message.MsgPrivate,
+func handleReset(db *sql.DB, conf *BotConf, msg message.MsgPrivate,
                         responseChannel chan fmt.Stringer) bool {
         if strings.ToLower(msg.Msg) != "reset" { return false }
         if strings.ToLower(msg.User) != conf.Admin { return false }
@@ -122,20 +212,100 @@ func handleReset(db *sql.DB, conf BotConf, msg message.MsgPrivate,
         return true
 }
 
-func handleHelp(db *sql.DB, conf BotConf, msg message.MsgPrivate,
-                        responseChannel chan fmt.Stringer) bool {
-  if strings.ToLower(msg.Msg) != "gobot: help" { return false }
-  responseChannel <- message.MsgSend{msg.Response(), conf.Help}
-  return true
+func pickMessage(possibleMessages []string) string {
+        hearts := utilstring.GetHearts(4)
+        exclamations := strings.Repeat("!", rand.Intn(4))
+        msg := utilstring.RandomString(possibleMessages)
+        return fmt.Sprintf("%s %s%s %s", hearts, msg, exclamations, hearts)
 }
 
-func handleMessage(db *sql.DB, conf BotConf, msg message.MsgPrivate,
-                        responseChannel chan fmt.Stringer) {
+func getNickInMessage(msg string) string {
+        splitted := strings.Split(msg, " ")
+        if len(splitted) <= 1 {
+                return ""
+        }
+        lastPart := utilstring.Truncate(splitted[len(splitted) -1], 15)
+        return fmt.Sprintf("%s: ", lastPart)
+}
+
+func getPukeMessage(msg string) string {
+        hearts := utilstring.GetHearts(25)
+        return fmt.Sprintf("%s", hearts)
+}
+
+func handleTrigger(msg message.MsgPrivate, trigger Trigger, responseChannel chan fmt.Stringer) bool {
+        lowerMsg := strings.ToLower(msg.Msg)
+        if !utilstring.StringContains(lowerMsg, trigger.Words) {
+                return false
+        }
+        resp := ""
+        nick := getNickInMessage(msg.Msg)
+        if trigger.IsPuke {
+                resp = getPukeMessage(lowerMsg)
+        } else {
+                resp = pickMessage(trigger.Results)
+        }
+        responseChannel <- message.MsgSend{msg.Response(), fmt.Sprintf("%s%s", nick, resp)}
+        return true
+}
+
+func handleTriggers(db *sql.DB, conf *BotConf, msg message.MsgPrivate,
+                        responseChannel chan fmt.Stringer) bool {
+        for _, trigger := range conf.Triggers {
+                if handleTrigger(msg, trigger, responseChannel) { return true }
+        }
+        return false
+}
+
+func handlePutf8(db *sql.DB, conf *BotConf, msg message.MsgPrivate,
+                        responseChannel chan fmt.Stringer) bool {
+        if !strings.Contains(strings.ToLower(msg.Msg), "putf8") { return false }
+        numChars := rand.Intn(25)
+        res := make([]string, numChars)
+        for i := 0; i < numChars; i++ {
+                res[i] = utilstring.ColorString(utilstring.GetRandUtf8())
+        }
+        nick := getNickInMessage(msg.Msg)
+        responseChannel <- message.MsgSend{msg.Response(), fmt.Sprintf("%s%s", nick, strings.Join(res, " "))}
+        return true
+}
+
+func handleDodo(db *sql.DB, conf *BotConf, msg message.MsgPrivate,
+                        responseChannel chan fmt.Stringer) bool {
+        if !strings.Contains(strings.ToLower(msg.Msg), "dodo") { return false }
+        zStr := strings.Repeat("Zz", rand.Intn(25))
+        res := utilstring.ColorStringSlice(utilstring.ShuffleString(zStr))
+        nick := getNickInMessage(msg.Msg)
+        responseChannel <- message.MsgSend{msg.Response(), fmt.Sprintf("%s%s", nick, res)}
+        return true
+}
+
+func handleTroll(db *sql.DB, conf *BotConf, msg message.MsgPrivate,
+                        responseChannel chan fmt.Stringer) bool {
+        if !strings.HasPrefix(strings.ToLower(msg.Msg), "troll") { return false }
+        winners := []string{msg.Nick()}
+        resp := formatWinners(winners, conf)
+        responseChannel <- message.MsgSend{msg.Response(), resp}
+        return true
+}
+
+func handleHelp(db *sql.DB, conf *BotConf, msg message.MsgPrivate,
+                        responseChannel chan fmt.Stringer) bool {
+        if strings.ToLower(msg.Msg) != "gobot: help" { return false }
+        responseChannel <- message.MsgSend{msg.Response(), conf.Help}
+        return true
+}
+
+func handleMessage(db *sql.DB, conf *BotConf, msg message.MsgPrivate, responseChannel chan fmt.Stringer) {
         log.Printf("Received message %s", msg.Msg)
-        handlers := []func(*sql.DB, BotConf, message.MsgPrivate, chan fmt.Stringer) bool { handleHelp,
-          handleTop, handleSpecificTop, handleScores, handlePlaceBet, handleAdminBet,
-          handleBet, handleRollback, handleReset}
+        handlers := []func(*sql.DB, *BotConf, message.MsgPrivate, chan fmt.Stringer) bool { handleHelp,
+        handleTop, handleSpecificTop, handleScores, handlePlaceBet, handleAdminBet,
+        handleBet, handleRollback, handleReset, handleBetSpecificTimeZone, handleTimezoneConversion,
+        handlePutf8, handleDodo, handleTroll, handleTriggers}
         for _, handler := range handlers {
-          if handler(db, conf, msg, responseChannel) { break }
+                if handler(db, conf, msg, responseChannel) {
+                        log.Printf("Breaking on handler %s", handler)
+                        break
+                }
         }
 }
