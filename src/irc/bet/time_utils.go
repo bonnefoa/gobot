@@ -16,7 +16,7 @@ func ConvertTimeToUTC(ts time.Time) time.Time {
         return ts
 }
 
-func FormatTimeInUTC(ts time.Time) string {
+func FormatTimeInUtc(ts time.Time) string {
         ts = ConvertTimeToUTC(ts)
         return ts.Format("2006-01-02 15:04:05")
 }

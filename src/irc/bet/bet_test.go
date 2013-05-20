@@ -34,11 +34,23 @@ func TestParseDate(t *testing.T) {
         assert.AssertEquals(t, expected, res)
 }
 
+func checkUserScores(t *testing.T, first []UserScores, snd []UserScores) {
+        if len(first) != len(snd) {
+                t.Logf("Invalid size : First %v, snd %v\n", first, snd)
+                t.FailNow()
+        }
+
+        for k, _ := range first {
+                assert.AssertEquals(t, first[k], snd[k])
+        }
+}
+
 func TestSimpleBet(t *testing.T) {
         os.Remove("test.db")
         db := InitBase("test.db")
         GetOrCreateBet(db)
         AddUserBet(db, "after", time.Now().Add(time.Hour), false)
+        AddUserBet(db, "other", time.Now().Add(time.Hour), false)
         good := time.Now().Add(time.Minute)
         AddUserBet(db, "near", good, false)
         AddUserBet(db, "near2", good, false)
@@ -51,26 +63,25 @@ func TestSimpleBet(t *testing.T) {
         t.Logf("Closing first bet")
         CloseBet(db, time.Now())
 
-        var scores map[string]int
-        scores = GetScores(db)
-        expectedScores := map[string] int {"near":1, "near2":1,
-                "before":0, "after":0}
-        assert.AssertMapEquals(t, expectedScores, scores)
+        scores := GetScores(db)
+        expectedScores := []UserScores { UserScores{"near", 1},
+                UserScores{"near2", 1}, UserScores{"after", 0}, UserScores{"other", 0}  }
+        checkUserScores(t, expectedScores, scores)
 
         good2 := time.Now()
         good2 = good2.Add(time.Minute)
         AddUserBet(db, "near", good2, false)
-        AddUserBet(db, "before", good2, false)
+        AddUserBet(db, "other", good2, false)
         AddUserBet(db, "after", good2.Add(time.Hour), false)
 
         CloseBet(db, good2)
 
         scores = GetScores(db)
-        expectedScores2 := map[string] int {"near":2, "near2":1,
-                "before":1, "after":0}
-        assert.AssertMapEquals(t, expectedScores2, scores)
+        expectedScores2 := []UserScores { UserScores{"near", 2},
+                UserScores{"near2", 1}, UserScores{"other", 1}, UserScores{"after", 0} }
+        checkUserScores(t, expectedScores2, scores)
 
         RollbackLastBet(db)
         scores = GetScores(db)
-        assert.AssertMapEquals(t, expectedScores, scores)
+        checkUserScores(t, expectedScores, scores)
 }

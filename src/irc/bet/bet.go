@@ -8,6 +8,19 @@ import (
         "errors"
 )
 
+type UserScores struct {
+        Nick string
+        Score int
+}
+
+type UserBet struct {
+        Nick string
+        Time time.Time
+}
+
+func (user *UserScores) String() string { return user.Nick }
+func (user *UserBet) String() string { return user.Nick }
+
 func createTable(db *sql.DB, query string) {
         tx, err := db.Begin()
         _, err = tx.Exec(query)
@@ -78,7 +91,7 @@ func GetCurrentBet(db *sql.DB) int {
 func AddUserBet(db *sql.DB, nick string, ts time.Time, isAdmin bool) error {
         now := ConvertTimeToUTC(time.Now())
         ts = ConvertTimeToUTC(ts)
-        timeStr := FormatTimeInUTC(ts)
+        timeStr := FormatTimeInUtc(ts)
         cur := GetOrCreateBet(db)
         if cur == 0 { log.Fatal("Could not get bet\n") }
         existing_ts := GetUserBet(db, cur, nick)
@@ -103,7 +116,7 @@ func CloserBet(db *sql.DB, ts time.Time) []string {
         var err error
         curBet := GetCurrentBet(db)
         if curBet == 0 { return []string {} }
-        timeStr := FormatTimeInUTC(ts)
+        timeStr := FormatTimeInUtc(ts)
         log.Printf("Getting closer bet to %s\n", timeStr)
         rows := prepareSelect(db, `
              SELECT nick
@@ -134,7 +147,7 @@ func IncrementNicks(db *sql.DB, nicks []string, val int) {
 
 func CloseBet(db *sql.DB, ts time.Time) []string {
         ts = ConvertTimeToUTC(ts)
-        timeStr := FormatTimeInUTC(ts)
+        timeStr := FormatTimeInUtc(ts)
         log.Printf("Closing bet with time %s\n", timeStr)
         nicks := CloserBet(db, ts)
         IncrementNicks(db, nicks, 1)
@@ -172,38 +185,39 @@ func GetUserBet(db *sql.DB, betId int, nick string) * time.Time {
         return nil
 }
 
-func GetUserBets(db *sql.DB, betId int) map[string] time.Time {
+func GetUserBets(db *sql.DB, betId int) []UserBet {
         rows := prepareSelect(db, `
              SELECT nick, time
              FROM userBet
-             WHERE betId = ?;
+             WHERE betId = ?
+             ORDER BY time ASC;
              `, betId)
         var err error
-        res := make(map[string]time.Time)
+        res := make([]UserBet, 0)
         for rows.Next() {
                 var nick string
                 var ts time.Time
                 err = rows.Scan(&nick, &ts)
-                res[nick] = ts
+                res = append(res, UserBet{nick, ts})
         }
         err = rows.Close()
         if err != nil { log.Fatal(err) }
         return res
 }
 
-func GetScores(db *sql.DB) map[string] int {
+func GetScores(db *sql.DB) []UserScores {
         rows := prepareSelect(db, `
              SELECT nick, score
              FROM betScore
-             ORDER BY score DESC;
+             ORDER BY score DESC, nick ASC;
              `)
         var err error
-        res := make(map[string]int)
+        res := make([]UserScores, 0)
         for rows.Next() {
                 var nick string
                 var score int
                 err = rows.Scan(&nick, &score)
-                res[nick] = score
+                res = append(res, UserScores{nick, score} )
         }
         err = rows.Close()
         if err != nil { log.Fatal(err) }
