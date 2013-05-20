@@ -105,6 +105,17 @@ func maybeInMsg(l *lexer) stateFn {
         panic("Shoud not happen")
 }
 
+func imInSpaceAfterColumn(l *lexer) stateFn {
+        for {
+                if l.next() != ' ' {
+                        l.backup()
+                        l.ignore()
+                        return lexTextAfterColumn
+                }
+        }
+        panic("Shoud not happen")
+}
+
 func imInSpace(l *lexer) stateFn {
         for {
                 if l.next() != ' ' {
@@ -116,13 +127,37 @@ func imInSpace(l *lexer) stateFn {
         panic("Shoud not happen")
 }
 
+func lexTextAfterColumn(l *lexer) stateFn {
+        for {
+                if l.pos >= len(l.input) { break }
+                if l.pos + 2 <= len(l.input) && l.input[ l.pos:l.pos + 2] == "\r\n" {
+                        l.emit(WORD)
+                        l.next()
+                        l.next()
+                        l.emit(EOF)
+                        if l.pos >= len(l.input) {
+                          return nil
+                        }
+                        return firstWord
+                }
+                if l.input[ l.pos ] == ' ' {
+                        l.emit(WORD)
+                        return imInSpaceAfterColumn
+                }
+                if l.next() == eof { break }
+        }
+        if l.pos > l.start { l.emit(WORD) }
+        l.emit(EOF)
+        return nil
+}
+
 func lexText(l *lexer) stateFn {
         log.Printf("Lex text, start %d, pos %d\n",
                        l.start, l.pos)
         if l.input[ l.pos ] == ':' {
                 l.next()
                 l.emit(COLUMN)
-                return lexText
+                return lexTextAfterColumn
         }
         for {
                 if l.pos >= len(l.input) { break }
