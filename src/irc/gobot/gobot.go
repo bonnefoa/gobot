@@ -9,7 +9,17 @@ import (
         "os"
         "irc/bet"
         "database/sql"
+        "flag"
+        "math/rand"
+        "math/big"
+        cryptrand "crypto/rand"
 )
+
+type Trigger struct {
+        Words []string
+        Results []string
+        IsPuke bool
+}
 
 type BotConf struct {
         Server string
@@ -21,6 +31,7 @@ type BotConf struct {
         Help string
         Name string
         RealName string
+        Triggers []Trigger
 }
 
 func readConfigurationFile(filename string) BotConf {
@@ -55,7 +66,7 @@ func dispatchMessage(db *sql.DB, conf BotConf, msg string, responseChannel chan 
                     responseChannel <- message.MsgPong{parsed.Ping}
             case message.MsgPrivate:
                     log.Printf("Received message %s from %s\n", parsed.Msg, parsed.User)
-                    handleMessage(db, conf, parsed, responseChannel)
+                    handleMessage(db, &conf, parsed, responseChannel)
             default:
                     log.Printf("No switch matched for %s!\n", parsed)
             }
@@ -69,8 +80,17 @@ func join(conf BotConf, responseChannel chan fmt.Stringer) {
         responseChannel <- message.MsgJoin{ conf.Channel }
 }
 
+func initializeRandom(conf *BotConf) {
+        max := big.NewInt(2^60)
+        seed, _ := cryptrand.Int(cryptrand.Reader, max)
+        rand.Seed(seed.Int64())
+}
+
 func connect() {
-        conf := readConfigurationFile("gobot.json")
+        confFile := flag.String("conffile", "gobot.json", "Conf path")
+        flag.Parse()
+        conf := readConfigurationFile(*confFile)
+        initializeRandom(&conf)
 
         db := bet.InitBase(conf.Db)
         responseChannel := make(chan fmt.Stringer)
