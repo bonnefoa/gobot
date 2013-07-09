@@ -7,9 +7,56 @@ import (
         "unicode"
 )
 
+var rotateLetter = [...]rune {'ɐ', 'q', 'ɔ', 'p', 'ǝ', 'ɟ', 'ƃ', 'ɥ', 'ı', 'ɾ', 'ʞ', 'l', 'ɯ', 'u', 'o', 'd', 'b', 'ɹ', 's', 'ʇ', 'n', 'ʌ', 'ʍ', 'x', 'ʎ', 'z'}
+var rotateDigit = [...]rune {'0', 'Ɩ', '2', 'Ɛ', '4', '5', '9', '7', '8', '6'}
+
+func RotateString(s string) string {
+        return strings.Map(RotateRune, s)
+}
+
+func RotateRune(r rune) rune {
+        if unicode.IsLetter(r) {
+                if r > 'z' || r < 'a' {
+                        return r
+                }
+                index := int(r) - int('a')
+                return rotateLetter[index]
+        } else if unicode.IsDigit(r) {
+                index := int(r) - int('0')
+                return rotateDigit[index]
+        }
+        return r
+}
+
+func KeepLettersAndSpace(r rune) rune {
+        if unicode.IsLetter(r) { return r }
+        if unicode.IsSpace(r) { return r }
+        return -1
+}
+
 func StringContains(el string, sl []string) bool {
         for _, m := range sl {
                 if strings.Contains(el, m) {return true}
+        }
+        return false
+}
+
+func TriggerIn(words []string, msg string) bool {
+        for _, w := range words {
+                if strings.Contains(w, " ") {
+                        if strings.Contains(msg, w) {
+                                return true
+                        }
+                }
+        }
+        return SliceIn(words, strings.Split(msg, " "))
+}
+
+func SliceIn(el []string, sl []string) bool {
+        for _, e := range el {
+                for _, m := range sl {
+                        if e == m { return true }
+                }
         }
         return false
 }
