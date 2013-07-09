@@ -296,12 +296,19 @@ func handleHelp(db *sql.DB, conf *BotConf, msg message.MsgPrivate,
         return true
 }
 
+func handleRotate(db *sql.DB, conf *BotConf, msg message.MsgPrivate,
+                        responseChannel chan fmt.Stringer) bool {
+        if !strings.HasPrefix(strings.ToLower(msg.Msg), "rotate") { return false }
+        responseChannel <- message.MsgSend{msg.Response(), utilstring.RotateString(msg.Msg[6:])}
+        return true
+}
+
 func handleMessage(db *sql.DB, conf *BotConf, msg message.MsgPrivate, responseChannel chan fmt.Stringer) {
         log.Printf("Received message %s", msg.Msg)
         handlers := []func(*sql.DB, *BotConf, message.MsgPrivate, chan fmt.Stringer) bool { handleHelp,
         handleTop, handleSpecificTop, handleScores, handlePlaceBet, handleAdminBet,
         handleBet, handleRollback, handleReset, handleBetSpecificTimeZone, handleTimezoneConversion,
-        handlePutf8, handleDodo, handleTroll, handleTriggers}
+        handlePutf8, handleDodo, handleTroll, handleTriggers, handleRotate}
         for _, handler := range handlers {
                 if handler(db, conf, msg, responseChannel) {
                         log.Printf("Breaking on handler %s", handler)
