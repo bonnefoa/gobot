@@ -219,13 +219,14 @@ func pickMessage(possibleMessages []string) string {
         return fmt.Sprintf("%s %s%s %s", hearts, msg, exclamations, hearts)
 }
 
-func getNickInMessage(msg string) string {
-        splitted := strings.Split(msg, " ")
-        if len(splitted) <= 1 {
-                return ""
+func getNickInMessage(db *sql.DB, msg string) string {
+        users := bet.GetUsers(db)
+        for _, n := range strings.Split(msg, " ") {
+                if utilstring.StringContains(n, users) {
+                        return fmt.Sprintf("%s: ", n)
+                }
         }
-        lastPart := utilstring.Truncate(splitted[len(splitted) -1], 15)
-        return fmt.Sprintf("%s: ", lastPart)
+        return ""
 }
 
 func getPukeMessage(msg string) string {
@@ -233,13 +234,14 @@ func getPukeMessage(msg string) string {
         return fmt.Sprintf("%s", hearts)
 }
 
-func handleTrigger(msg message.MsgPrivate, trigger Trigger, responseChannel chan fmt.Stringer) bool {
+func handleTrigger(db *sql.DB, msg message.MsgPrivate, trigger Trigger, responseChannel chan fmt.Stringer) bool {
         lowerMsg := strings.ToLower(msg.Msg)
-        if !utilstring.StringContains(lowerMsg, trigger.Words) {
+        lowerMsg = strings.Map(utilstring.KeepLettersAndSpace, lowerMsg)
+        if !utilstring.TriggerIn(trigger.Words, lowerMsg) {
                 return false
         }
         resp := ""
-        nick := getNickInMessage(msg.Msg)
+        nick := getNickInMessage(db, msg.Msg)
         if trigger.IsPuke {
                 resp = getPukeMessage(lowerMsg)
         } else {
@@ -252,7 +254,7 @@ func handleTrigger(msg message.MsgPrivate, trigger Trigger, responseChannel chan
 func handleTriggers(db *sql.DB, conf *BotConf, msg message.MsgPrivate,
                         responseChannel chan fmt.Stringer) bool {
         for _, trigger := range conf.Triggers {
-                if handleTrigger(msg, trigger, responseChannel) { return true }
+                if handleTrigger(db, msg, trigger, responseChannel) { return true }
         }
         return false
 }
@@ -265,7 +267,7 @@ func handlePutf8(db *sql.DB, conf *BotConf, msg message.MsgPrivate,
         for i := 0; i < numChars; i++ {
                 res[i] = utilstring.ColorString(utilstring.GetRandUtf8())
         }
-        nick := getNickInMessage(msg.Msg)
+        nick := getNickInMessage(db, msg.Msg)
         responseChannel <- message.MsgSend{msg.Response(), fmt.Sprintf("%s%s", nick, strings.Join(res, " "))}
         return true
 }
@@ -275,7 +277,7 @@ func handleDodo(db *sql.DB, conf *BotConf, msg message.MsgPrivate,
         if !strings.Contains(strings.ToLower(msg.Msg), "dodo") { return false }
         zStr := strings.Repeat("Zz", rand.Intn(25))
         res := utilstring.ColorStringSlice(utilstring.ShuffleString(zStr))
-        nick := getNickInMessage(msg.Msg)
+        nick := getNickInMessage(db, msg.Msg)
         responseChannel <- message.MsgSend{msg.Response(), fmt.Sprintf("%s%s", nick, res)}
         return true
 }
