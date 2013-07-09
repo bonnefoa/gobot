@@ -205,6 +205,23 @@ func GetUserBets(db *sql.DB, betId int) []UserBet {
         return res
 }
 
+func GetUsers(db *sql.DB) []string {
+        rows := prepareSelect(db, `
+             SELECT nick
+             FROM betScore;
+             `)
+        var err error
+        res := make([]string, 0)
+        for rows.Next() {
+                var nick string
+                err = rows.Scan(&nick)
+                res = append(res, nick)
+        }
+        err = rows.Close()
+        if err != nil { log.Fatal(err) }
+        return res
+}
+
 func GetScores(db *sql.DB) []UserScores {
         rows := prepareSelect(db, `
              SELECT nick, score
