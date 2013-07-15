@@ -3,7 +3,6 @@ package message
 
 import (
     "log"
-    "fmt"
     "strings"
 )
 %}
