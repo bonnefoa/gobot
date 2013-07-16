@@ -11,5 +11,9 @@ test: $(PARSER) $(SQLITE)
 	go test -i irc/message
 	go test irc/message
 
+metapi.prof: 
+	go build irc/metapi
+	./metapi -cpuprofile=metapi.prof
+
 gobot: $(PARSER) $(SQLITE)
 	go build irc/gobot
