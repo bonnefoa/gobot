@@ -5,6 +5,7 @@ import (
         "os"
         "log"
         "runtime/pprof"
+        "fmt"
 )
 
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
@@ -19,5 +20,5 @@ func main() {
                 pprof.StartCPUProfile(f)
                 defer pprof.StopCPUProfile()
         }
-        EstimatePi(400)
+        fmt.Printf("Pi is %v\n", EstimatePi(400).FloatString(10))
 }

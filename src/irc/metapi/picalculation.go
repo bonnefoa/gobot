@@ -48,33 +48,33 @@ func computeMul(lst []int) *big.Rat {
 func reduceSlices(numerator, denominator []int) ([]int, []int) {
         sortedNum := sort.IntSlice(numerator)
         sortedNum.Sort()
-        sortedDenum := sort.IntSlice(denominator)
-        sortedDenum.Sort()
+        sortedDenom := sort.IntSlice(denominator)
+        sortedDenom.Sort()
         j := 0
         resNum := make([]int, 0)
-        resDenum := make([]int, 0)
+        resDenom := make([]int, 0)
         for i := 0; i < len(sortedNum); {
-                if j > len(sortedDenum) - 1 {
+                if j > len(sortedDenom) - 1 {
                         resNum = concatInt(resNum, sortedNum[i:])
                         break
                 }
-                if sortedNum[i] == sortedDenum[j] {
+                if sortedNum[i] == sortedDenom[j] {
                         j++
                         i++
                         continue
                 }
-                if sortedNum[i] > sortedDenum[j] {
-                        resDenum = append(resDenum, sortedDenum[j])
+                if sortedNum[i] > sortedDenom[j] {
+                        resDenom = append(resDenom, sortedDenom[j])
                         j++
                         continue
                 }
                 resNum = append(resNum, sortedNum[i])
                 i++
         }
-        if j < len(sortedDenum) {
-                resDenum = concatInt(resDenum, sortedDenum[j:])
+        if j < len(sortedDenom) {
+                resDenom = concatInt(resDenom, sortedDenom[j:])
         }
-        return resNum, resDenum
+        return resNum, resDenom
 }
 
 func snFactorialPart(n int) *big.Rat {
@@ -87,17 +87,17 @@ func snFactorialPart(n int) *big.Rat {
             denominatorList2[i] = num * num * num
         }
         denominatorList = concatInt(denominatorList, denominatorList2)
-        num, denum := reduceSlices(numeratorList, denominatorList)
+        num, denom := reduceSlices(numeratorList, denominatorList)
         ratNum := computeMul(num)
-        ratDenum := computeMul(denum)
-        ratNum.Quo(ratNum, ratDenum)
+        ratDenom := computeMul(denom)
+        ratNum.Quo(ratNum, ratDenom)
         return ratNum
 }
 
 func snQuoPart(n int) *big.Rat {
         num := big.NewRat(kNum1 + kNum2 * int64(n), 1)
-        denum := ratPow(big.NewRat(kDenom, 1), 3 * n)
-        num.Quo(num, denum)
+        denom := ratPow(big.NewRat(kDenom, 1), 3 * n)
+        num.Quo(num, denom)
         return num
 }
 
@@ -112,8 +112,7 @@ func sn(n int) *big.Rat {
 }
 
 func EstimatePi(iteration int) *big.Rat {
-        pi := big.NewRat(0, 1)
-        pi.Add(pi, piFactor)
+        pi := big.NewRat(0, 1).Set(piFactor)
         sum := big.NewRat(1, 1)
         for i := 0; i < iteration; i++ {
                 sum.Add(sum, sn(i))
