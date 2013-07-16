@@ -13,8 +13,10 @@ var reUrls, _ = regexp.Compile("https?://[^ ]*")
 func ExtractUrls(mess string) []string {
         urls := reUrls.FindAllString(mess, -1)
         for i := range urls {
-            urls[i] = strings.TrimSuffix(urls[i], ".jpeg")
-            urls[i] = strings.TrimSuffix(urls[i], ".jpg")
+            if strings.Contains(urls[i], "imgur") {
+                urls[i] = strings.TrimSuffix(urls[i], ".jpeg")
+                urls[i] = strings.TrimSuffix(urls[i], ".jpg")
+            }
         }
         return urls
 }
