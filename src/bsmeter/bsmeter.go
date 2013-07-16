@@ -3,8 +3,8 @@ package bsmeter
 import (
         "net/http"
         "log"
-        "encoding/xml"
         "regexp"
+        html "code.google.com/p/go.net/html"
 )
 
 var reUrls, _ = regexp.Compile("https?://[^ ]*")
@@ -19,26 +19,29 @@ func LookupTitle(url string) string {
                 log.Printf("Got error is %v\n", err)
                 return ""
         }
-        dec := xml.NewDecoder(resp.Body)
+        z := html.NewTokenizer(resp.Body)
         isTitle := false
+        res := ""
+
         for {
-                t, _ := dec.Token()
-                if t == nil { break }
-                switch token := t.(type) {
-                case xml.StartElement:
-                        if token.Name.Local == "title" {
+                tt := z.Next()
+                switch tt {
+                case html.ErrorToken:
+                        return ""
+                case html.TextToken:
+                        if isTitle {
+                                res = string(z.Text())
+                        }
+                case html.StartTagToken:
+                        tn, _ := z.TagName()
+                        if string(tn) == "title" {
                                 isTitle = true
                         }
-                case xml.EndElement:
-                        if token.Name.Local == "title" {
-                                isTitle = false
+                case html.EndTagToken:
+                        tn, _ := z.TagName()
+                        if string(tn) == "title" {
                                 resp.Body.Close()
-                                return ""
-                        }
-                case xml.CharData:
-                        if isTitle {
-                                resp.Body.Close()
-                                return string(token)
+                                return res
                         }
                 }
         }
