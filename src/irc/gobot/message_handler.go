@@ -332,10 +332,10 @@ func handleHttpTitle(state State, msg message.MsgPrivate) bool {
         return true
 }
 
-var handlers = []func(State, message.MsgPrivate) bool { handleHelp,
+var handlers = []func(State, message.MsgPrivate) bool { handleHttpTitle, handleHelp,
         handleTop, handleSpecificTop, handleScores, handlePlaceBet, handleAdminBet,
         handleBet, handleRollback, handleReset, handleBetSpecificTimeZone, handleTimezoneConversion,
-        handlePutf8, handleDodo, handleTroll, handleTriggers, handleMetapi, handleRotate, handleHttpTitle}
+        handlePutf8, handleDodo, handleTroll, handleTriggers, handleMetapi, handleRotate}
 
 func handleMessage(state State, msg message.MsgPrivate) {
         log.Printf("Received message %s", msg.Msg)
