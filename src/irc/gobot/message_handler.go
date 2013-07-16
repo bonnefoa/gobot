@@ -13,6 +13,7 @@ import (
         "utils/utilstring"
         "strconv"
         "irc/metapi"
+        "bsmeter"
 )
 
 func placeBet(state State, nick string, msg message.MsgPrivate, ts time.Time, isAdmin bool) {
@@ -309,10 +310,21 @@ func handleRotate(state State, msg message.MsgPrivate) bool {
         return true
 }
 
+func handleHttpTitle(state State, msg message.MsgPrivate) bool {
+        if !strings.Contains(strings.ToLower(msg.Msg), "http") { return false }
+        urls := bsmeter.ExtractUrls(strings.ToLower(msg.Msg))
+        resp := make([]string, 0)
+        for _, url := range urls {
+                resp = append(resp, fmt.Sprintf("[ %s ]", bsmeter.LookupTitle(url)))
+        }
+        state.ResponseChannel <- message.MsgSend{msg.Response(), strings.Join(resp, " ")}
+        return true
+}
+
 var handlers = []func(State, message.MsgPrivate) bool { handleHelp,
         handleTop, handleSpecificTop, handleScores, handlePlaceBet, handleAdminBet,
         handleBet, handleRollback, handleReset, handleBetSpecificTimeZone, handleTimezoneConversion,
-        handlePutf8, handleDodo, handleTroll, handleTriggers, handleMetapi, handleRotate}
+        handlePutf8, handleDodo, handleTroll, handleTriggers, handleMetapi, handleRotate, handleHttpTitle}
 
 func handleMessage(state State, msg message.MsgPrivate) {
         log.Printf("Received message %s", msg.Msg)
