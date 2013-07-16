@@ -5,12 +5,24 @@ import (
         "log"
         "regexp"
         html "code.google.com/p/go.net/html"
+        "strings"
 )
 
 var reUrls, _ = regexp.Compile("https?://[^ ]*")
 
 func ExtractUrls(mess string) []string {
-        return reUrls.FindAllString(mess, -1)
+        urls := reUrls.FindAllString(mess, -1)
+        for i := range urls {
+            urls[i] = strings.TrimSuffix(urls[i], ".jpeg")
+            urls[i] = strings.TrimSuffix(urls[i], ".jpg")
+        }
+        return urls
+}
+
+func cleanTitle(title string) string {
+    title = strings.Replace(title, "\n", "", -1)
+    title = strings.TrimSpace(title)
+    return title
 }
 
 func LookupTitle(url string) string {
@@ -41,7 +53,7 @@ func LookupTitle(url string) string {
                         tn, _ := z.TagName()
                         if string(tn) == "title" {
                                 resp.Body.Close()
-                                return res
+                                return cleanTitle(res)
                         }
                 }
         }
