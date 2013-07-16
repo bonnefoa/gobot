@@ -9,11 +9,20 @@ import (
         "fmt"
         "strconv"
         "utils/utilsint"
+        "os"
+        "encoding/json"
+        "log"
 )
 
 type PiQuery struct {
         Num int64
         Channel string
+}
+
+type PiState struct {
+        Iteration int
+        Numerator string
+        Denominator string
 }
 
 const kNum1  = 13591409;
@@ -123,13 +132,18 @@ func sn(n int) *big.Rat {
         return factRat
 }
 
+func getPiFromSum(sum *big.Rat) *big.Rat {
+        pi := big.NewRat(1, 1).Set(piFactor)
+        pi.Mul(pi, sum)
+        pi.Inv(pi)
+        return pi
+}
+
 func EstimatePiFromPrevious(iteration, previousIndex int, sum *big.Rat) (*big.Rat, *big.Rat) {
-        pi := big.NewRat(0, 1).Set(piFactor)
         for i := previousIndex; i < iteration; i++ {
                 sum.Add(sum, sn(i))
         }
-        pi.Mul(pi, sum)
-        pi.Inv(pi)
+        pi := getPiFromSum(sum)
         return pi, sum
 }
 
@@ -141,6 +155,25 @@ func formatFoundResponse(pi string, num string, index int) string {
         low := utilsint.MaxInt(index - 10, 0)
         high := utilsint.MinInt(index + len(num) + 10, len(pi) - 1)
         return fmt.Sprintf("Found %q at position %v, ...%s...", num, index, pi[low:high])
+}
+
+func savePiState(iteration int, sum *big.Rat) {
+        file, _ := os.OpenFile("pi_cache", os.O_WRONLY | os.O_CREATE, 400)
+        enc := json.NewEncoder(file)
+        enc.Encode(PiState{iteration, sum.Num().String(), sum.Denom().String()})
+        file.Close()
+}
+
+func loadPiState() PiState {
+        file, err := os.Open("pi_cache")
+        if err != nil {
+                return PiState{0, "1", "1"}
+        }
+        dec := json.NewDecoder(file)
+        var piState PiState
+        dec.Decode(&piState)
+        file.Close()
+        return piState
 }
 
 func processUntilFound(numStr string, iteration int, piStr string, sum *big.Rat,
@@ -155,21 +188,25 @@ func processUntilFound(numStr string, iteration int, piStr string, sum *big.Rat,
                 responseChannel <- message.MsgSend{ircChannel,
                         "Computing next 500 iteration of  pi"}
                 newPi, newSum := EstimatePiFromPrevious(iteration + 500, iteration, sum)
-
                 sum = newSum
                 piStr = newPi.FloatString(iteration * 14)
+                log.Printf("Pi is %s\n", piStr);
                 iteration += 500
+                savePiState(iteration, sum)
         }
 }
 
 func SearchWorker(readChannel chan PiQuery, responseChannel chan fmt.Stringer) {
-        iteration := 0
-        sum := big.NewRat(0, 1)
-        piStr := ""
+        piState := loadPiState()
+        iteration := piState.Iteration
+        sum, _ := big.NewRat(1, 1).SetString(piState.Numerator)
+        den, _ := big.NewRat(1, 1).SetString(piState.Denominator)
+        sum.Quo(sum, den)
+        piStr := getPiFromSum(sum).FloatString(iteration * 14)
         for {
                 piQuery := <-readChannel
                 numStr := strconv.FormatInt(piQuery.Num, 10)
-                iteration, piStr, sum = processUntilFound(numStr, iteration, piStr, sum,
-                        responseChannel, piQuery.Channel)
+                iteration, piStr, sum = processUntilFound(numStr, iteration,
+                        piStr, sum, responseChannel, piQuery.Channel)
         }
 }
