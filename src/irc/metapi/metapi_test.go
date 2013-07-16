@@ -1,4 +1,4 @@
-package main
+package metapi
 
 import "testing"
 import "testing/assert"
@@ -22,7 +22,12 @@ func TestReduceSlices(t *testing.T) {
 }
 
 func TestPiDecimal(t *testing.T) {
-        t.Logf("pi is %q", EstimatePi(400).FloatString(1000))
+        pi, _ := EstimatePi(10)
+        assert.AssertEquals(t, "3.142", pi.FloatString(3))
+}
 
-        assert.AssertEquals(t, 1, 2)
+func TestPiLookup(t *testing.T) {
+        el := SearchNumber(1234)
+        t.Logf("El %q", el)
+        assert.AssertEquals(t, el, 2)
 }

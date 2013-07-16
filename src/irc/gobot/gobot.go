@@ -13,6 +13,8 @@ import (
         "math/rand"
         "math/big"
         cryptrand "crypto/rand"
+        "irc/metapi"
+        "runtime"
 )
 
 type Trigger struct {
@@ -33,6 +35,14 @@ type BotConf struct {
         RealName string
         Triggers []Trigger
 }
+
+type State struct {
+        Db *sql.DB
+        Conf *BotConf
+        ResponseChannel chan fmt.Stringer
+        PiQueryChannel chan metapi.PiQuery
+}
+
 
 func readConfigurationFile(filename string) BotConf {
         file, err := os.Open(filename)
@@ -59,14 +69,14 @@ func readConnection(conn *tls.Conn, readChannel chan []byte, errorChannel chan e
         }
 }
 
-func dispatchMessage(db *sql.DB, conf BotConf, msg string, responseChannel chan fmt.Stringer) {
+func dispatchMessage(state State, msg string) {
         for _, single_msg := range message.ParseMessage(msg) {
             switch parsed := single_msg.(type) {
             case message.MsgPing:
-                    responseChannel <- message.MsgPong{parsed.Ping}
+                    state.ResponseChannel <- message.MsgPong{parsed.Ping}
             case message.MsgPrivate:
                     log.Printf("Received message %s from %s\n", parsed.Msg, parsed.User)
-                    handleMessage(db, &conf, parsed, responseChannel)
+                    handleMessage(state, parsed)
             default:
                     log.Printf("No switch matched for %s!\n", parsed)
             }
@@ -94,6 +104,9 @@ func connect() {
 
         db := bet.InitBase(conf.Db)
         responseChannel := make(chan fmt.Stringer)
+        piQueryChannel := make(chan metapi.PiQuery)
+        state := State{Db: db, Conf: &conf, ResponseChannel: responseChannel,
+                PiQueryChannel: piQueryChannel}
         readChannel := make(chan []byte)
         errorChannel := make(chan error)
 
@@ -107,12 +120,13 @@ func connect() {
 
         go readConnection(conn, readChannel, errorChannel)
         go join(conf, responseChannel)
+        go metapi.SearchWorker(piQueryChannel, responseChannel)
 
         for {
                 select {
                 case data := <-readChannel:
                         log.Printf("Got data %q\n", data)
-                        go dispatchMessage(db, conf, string(data), responseChannel)
+                        go dispatchMessage(state, string(data))
                 case err := <-errorChannel:
                         log.Fatal("Got error %q\n", err)
                 case response := <-responseChannel:
@@ -123,5 +137,6 @@ func connect() {
 }
 
 func main() {
+        runtime.GOMAXPROCS(2)
         connect()
 }
