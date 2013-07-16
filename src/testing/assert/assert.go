@@ -26,6 +26,19 @@ func AssertEquals(t *testing.T, a interface{}, b interface{}) {
         }
 }
 
+func AssertIntSliceEquals(t *testing.T, a []int, b []int) {
+        if len(a) != len(b) {
+                t.Logf("%#v != %#v\n", a, b)
+                t.FailNow()
+        }
+        for i, _ := range a {
+                if a[i] != b[i] {
+                        t.Logf("%#v != %#v\n", a, b)
+                        t.FailNow()
+                }
+        }
+}
+
 func AssertBytesEquals(t *testing.T, a, b []byte) {
         if bytes.Compare(a, b) != 0 {
                 t.Logf("%#v != %#v\n", a, b)
