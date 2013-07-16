@@ -25,24 +25,25 @@ func cleanTitle(title string) string {
     return title
 }
 
-func LookupTitle(url string) string {
+func LookupTitle(url string) []string {
+        log.Printf("Lookup title for url %s\n", url)
         resp, err := http.Get(url)
+        res := make([]string, 0)
         if err != nil {
                 log.Printf("Got error is %v\n", err)
-                return ""
+                return res
         }
         z := html.NewTokenizer(resp.Body)
         isTitle := false
-        res := ""
 
         for {
                 tt := z.Next()
                 switch tt {
                 case html.ErrorToken:
-                        return ""
+                        return res
                 case html.TextToken:
                         if isTitle {
-                                res = string(z.Text())
+                                res = append(res, string(z.Text()))
                         }
                 case html.StartTagToken:
                         tn, _ := z.TagName()
@@ -53,9 +54,12 @@ func LookupTitle(url string) string {
                         tn, _ := z.TagName()
                         if string(tn) == "title" {
                                 resp.Body.Close()
-                                return cleanTitle(res)
+                                for i := range res {
+                                    res[i] = cleanTitle(res[i])
+                                }
+                                return res
                         }
                 }
         }
-        return ""
+        return res
 }

@@ -312,15 +312,23 @@ func handleRotate(state State, msg message.MsgPrivate) bool {
 
 func handleHttpTitle(state State, msg message.MsgPrivate) bool {
         if !strings.Contains(strings.ToLower(msg.Msg), "http") { return false }
-        urls := bsmeter.ExtractUrls(strings.ToLower(msg.Msg))
+        urls := bsmeter.ExtractUrls(msg.Msg)
         if len(urls) == 0 {
                 return false
         }
         resp := make([]string, 0)
+        titles := make([]string, 0)
         for _, url := range urls {
-                resp = append(resp, fmt.Sprintf("[ %s ]", bsmeter.LookupTitle(url)))
+            titles = append(titles, bsmeter.LookupTitle(url)...)
         }
-        state.ResponseChannel <- message.MsgSend{msg.Response(), strings.Join(resp, " ")}
+        if len(titles) == 0 {
+            return false
+        }
+        for _, title := range titles {
+            resp = append(resp, fmt.Sprintf("[ %s ]", title))
+        }
+        state.ResponseChannel <- message.MsgSend{msg.Response(),
+            strings.Join(resp, " ")}
         return true
 }
 
