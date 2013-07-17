@@ -99,8 +99,6 @@ func initializeRandom(conf *BotConf) {
 }
 
 func connect() {
-        confFile := flag.String("conffile", "gobot.json", "Conf path")
-        flag.Parse()
         conf := readConfigurationFile(*confFile)
         initializeRandom(&conf)
 
@@ -139,6 +137,7 @@ func connect() {
 }
 
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+var confFile = flag.String("conffile", "gobot.json", "Conf path")
 
 func main() {
         flag.Parse()
