@@ -316,19 +316,18 @@ func handleHttpTitle(state State, msg message.MsgPrivate) bool {
         if len(urls) == 0 {
                 return false
         }
-        resp := make([]string, 0)
         titles := make([]string, 0)
         for _, url := range urls {
-            titles = append(titles, bsmeter.LookupTitle(url)...)
+            title, found := bsmeter.LookupTitle(url)
+            if found {
+                titles = append(titles, fmt.Sprintf("[ %s ]", title))
+            }
         }
         if len(titles) == 0 {
             return false
         }
-        for _, title := range titles {
-            resp = append(resp, fmt.Sprintf("[ %s ]", title))
-        }
         state.ResponseChannel <- message.MsgSend{msg.Response(),
-            strings.Join(resp, " ")}
+            strings.Join(titles, " ")}
         return true
 }
 
