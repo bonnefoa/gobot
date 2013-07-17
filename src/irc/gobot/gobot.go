@@ -150,5 +150,6 @@ func main() {
                defer pprof.StopCPUProfile()
         }
         runtime.GOMAXPROCS(2)
+        log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
         connect()
 }
