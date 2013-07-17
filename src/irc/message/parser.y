@@ -127,7 +127,6 @@ func (l *lex) Error(e string) {
 }
 
 func ParseMessage(msg string) []interface{} {
-  log.Printf("Parsing %q", msg)
   res := gen_lex("Irc parser", msg)
   go res.run()
   tokens := []token{}

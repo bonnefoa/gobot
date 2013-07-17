@@ -3,7 +3,6 @@ package message
 import "fmt"
 import "unicode/utf8"
 import "strings"
-import "log"
 
 type token struct {
         tok int
@@ -25,8 +24,6 @@ type lexer struct {
 const ( eof rune = 0 )
 
 func (l * lexer) emit(t int) {
-        log.Printf("Emitting %d, start %d, pos %d, str '%s'\n",
-                       t, l.start, l.pos, l.input[l.start:l.pos])
         l.tokens <- token{t, l.input[l.start:l.pos]}
         l.start = l.pos
 }
@@ -46,8 +43,6 @@ func (l *lexer) ignore() { l.start = l.pos }
 func (l *lexer) backup() { l.pos -= l.width }
 
 func firstWord(l *lexer) stateFn {
-        log.Printf("First word state, start %d, pos %d\n",
-                       l.start, l.pos)
         if l.input[ l.pos ] == ':' {
                 l.next()
                 l.emit(COLUMN)
@@ -152,8 +147,6 @@ func lexTextAfterColumn(l *lexer) stateFn {
 }
 
 func lexText(l *lexer) stateFn {
-        log.Printf("Lex text, start %d, pos %d\n",
-                       l.start, l.pos)
         if l.input[ l.pos ] == ':' {
                 l.next()
                 l.emit(COLUMN)
