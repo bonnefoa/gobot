@@ -294,7 +294,7 @@ func handleMetapi(state State, msg message.MsgPrivate) bool {
         num, err := strconv.ParseInt(msg.Msg[7:], 10, 64)
         if err != nil {
                 state.ResponseChannel <-
-                        message.MsgSend{msg.Response(), "Expect a number to search"}
+                        message.MsgSend{msg.Response(), fmt.Sprintf("Expect an int32 to search, error was %q", err)}
                 return true
         } else {
                 state.ResponseChannel <-
