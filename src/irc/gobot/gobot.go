@@ -15,7 +15,9 @@ import (
         cryptrand "crypto/rand"
         "irc/metapi"
         "runtime"
+        "runtime/pprof"
 )
+
 
 type Trigger struct {
         Words []string
@@ -136,7 +138,18 @@ func connect() {
         }
 }
 
+var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+
 func main() {
+        flag.Parse()
+        if *cpuprofile != "" {
+               f, err := os.Create(*cpuprofile)
+               if err != nil {
+                       log.Fatal(err)
+               }
+               pprof.StartCPUProfile(f)
+               defer pprof.StopCPUProfile()
+        }
         runtime.GOMAXPROCS(2)
         connect()
 }
