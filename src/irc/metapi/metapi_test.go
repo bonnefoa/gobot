@@ -26,8 +26,3 @@ func TestPiDecimal(t *testing.T) {
         assert.AssertEquals(t, "3.142", pi.FloatString(3))
 }
 
-func TestPiLookup(t *testing.T) {
-        el := SearchNumber(1234)
-        t.Logf("El %q", el)
-        assert.AssertEquals(t, el, 2)
-}
