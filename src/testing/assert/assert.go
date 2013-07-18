@@ -26,6 +26,20 @@ func AssertEquals(t *testing.T, a interface{}, b interface{}) {
         }
 }
 
+func AssertFloatSuperior(t *testing.T, a float64, b float64) {
+        if a < b {
+                t.Logf("%#v != %#v\n", a, b)
+                t.FailNow()
+        }
+}
+
+func AssertFloatInferior(t *testing.T,a float64, b float64) {
+        if a > b {
+                t.Logf("%#v != %#v\n", a, b)
+                t.FailNow()
+        }
+}
+
 func AssertIntSliceEquals(t *testing.T, a []int, b []int) {
         if len(a) != len(b) {
                 t.Logf("%#v != %#v\n", a, b)
@@ -51,7 +65,6 @@ func AssertStringSliceEquals(t *testing.T, a []string, b []string) {
                 }
         }
 }
-
 
 func AssertBytesEquals(t *testing.T, a, b []byte) {
         if bytes.Compare(a, b) != 0 {
