@@ -8,7 +8,7 @@ import (
         "strings"
         "fmt"
         "strconv"
-        "utils/utilsint"
+        "utils/utilint"
         "os"
         "encoding/json"
         "log"
@@ -152,8 +152,8 @@ func EstimatePi(iteration int) (*big.Rat, *big.Rat) {
 }
 
 func formatFoundResponse(pi string, num string, index int) string {
-        low := utilsint.MaxInt(index - 10, 0)
-        high := utilsint.MinInt(index + len(num) + 10, len(pi) - 1)
+        low := utilint.MaxInt(index - 10, 0)
+        high := utilint.MinInt(index + len(num) + 10, len(pi) - 1)
         return fmt.Sprintf("Found %q at position %v, ...%s...", num, index, pi[low:high])
 }
 
