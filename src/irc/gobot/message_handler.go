@@ -310,28 +310,26 @@ func handleRotate(state State, msg message.MsgPrivate) bool {
         return true
 }
 
-func handleHttpTitle(state State, msg message.MsgPrivate) bool {
+func handleBsRequest(state State, msg message.MsgPrivate) bool {
         if !strings.Contains(strings.ToLower(msg.Msg), "http") { return false }
         urls := bsmeter.ExtractUrls(msg.Msg)
-        if len(urls) == 0 {
-                return false
-        }
-        titles := make([]string, 0)
-        for _, url := range urls {
-            title, found := bsmeter.LookupTitle(url)
-            if found {
-                titles = append(titles, fmt.Sprintf("[ %s ]", title))
-            }
-        }
-        if len(titles) == 0 {
-            return false
-        }
-        state.ResponseChannel <- message.MsgSend{msg.Response(),
-            strings.Join(titles, " ")}
+        if len(urls) == 0 { return false }
+        state.BsQueryChannel <- bsmeter.BsQuery{urls, false, false, msg.Response()}
         return true
 }
 
-var handlers = []func(State, message.MsgPrivate) bool { handleHttpTitle, handleHelp,
+func handleBsTraining(state State, msg message.MsgPrivate) bool {
+        lowerMsg := strings.ToLower(msg.Msg)
+        if !strings.HasPrefix(lowerMsg, "bs") && !strings.HasPrefix(lowerMsg, "nobs") {
+                return false }
+        bs := strings.HasPrefix(lowerMsg, "bs")
+        urls := bsmeter.ExtractUrls(msg.Msg)
+        if len(urls) == 0 { return false }
+        state.BsQueryChannel <- bsmeter.BsQuery{urls, true, bs, msg.Response()}
+        return true
+}
+
+var handlers = []func(State, message.MsgPrivate) bool { handleBsTraining, handleBsRequest, handleHelp,
         handleTop, handleSpecificTop, handleScores, handlePlaceBet, handleAdminBet,
         handleBet, handleRollback, handleReset, handleBetSpecificTimeZone, handleTimezoneConversion,
         handlePutf8, handleDodo, handleTroll, handleTriggers, handleMetapi, handleRotate}

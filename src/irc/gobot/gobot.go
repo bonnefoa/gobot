@@ -16,8 +16,8 @@ import (
         "irc/metapi"
         "runtime"
         "runtime/pprof"
+        "bsmeter"
 )
-
 
 type Trigger struct {
         Words []string
@@ -43,6 +43,7 @@ type State struct {
         Conf *BotConf
         ResponseChannel chan fmt.Stringer
         PiQueryChannel chan metapi.PiQuery
+        BsQueryChannel chan bsmeter.BsQuery
 }
 
 
@@ -105,8 +106,10 @@ func connect() {
         db := bet.InitBase(conf.Db)
         responseChannel := make(chan fmt.Stringer)
         piQueryChannel := make(chan metapi.PiQuery)
+        bsQueryChannel := make(chan bsmeter.BsQuery)
         state := State{Db: db, Conf: &conf, ResponseChannel: responseChannel,
-                PiQueryChannel: piQueryChannel}
+                PiQueryChannel: piQueryChannel,
+                BsQueryChannel: bsQueryChannel }
         readChannel := make(chan []byte)
         errorChannel := make(chan error)
 
@@ -121,6 +124,7 @@ func connect() {
         go readConnection(conn, readChannel, errorChannel)
         go join(conf, responseChannel)
         go metapi.SearchWorker(piQueryChannel, responseChannel)
+        go bsmeter.BsWorker(bsQueryChannel, responseChannel)
 
         for {
                 select {
