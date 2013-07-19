@@ -314,18 +314,23 @@ func handleBsRequest(state State, msg message.MsgPrivate) bool {
         if !strings.Contains(strings.ToLower(msg.Msg), "http") { return false }
         urls := bsmeter.ExtractUrls(msg.Msg)
         if len(urls) == 0 { return false }
-        state.BsQueryChannel <- bsmeter.BsQuery{urls, false, false, msg.Response()}
+        state.BsQueryChannel <- bsmeter.BsQuery{Urls:urls, Channel:msg.Response()}
         return true
 }
 
 func handleBsTraining(state State, msg message.MsgPrivate) bool {
         lowerMsg := strings.ToLower(msg.Msg)
+        if lowerMsg == "bsreload" {
+                state.BsQueryChannel <- bsmeter.BsQuery{IsReload:true}
+                return true
+        }
         if !strings.HasPrefix(lowerMsg, "bs") && !strings.HasPrefix(lowerMsg, "nobs") {
-                return false }
+                return false
+        }
         bs := strings.HasPrefix(lowerMsg, "bs")
         urls := bsmeter.ExtractUrls(msg.Msg)
         if len(urls) == 0 { return false }
-        state.BsQueryChannel <- bsmeter.BsQuery{urls, true, bs, msg.Response()}
+        state.BsQueryChannel <- bsmeter.BsQuery{Urls:urls, IsTraining:true, Bs:bs, Channel:msg.Response()}
         return true
 }
 
