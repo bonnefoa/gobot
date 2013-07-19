@@ -1,264 +1,161 @@
 package bsmeter
 
 import (
-        "net/http"
         "log"
-        "regexp"
-        html "code.google.com/p/go.net/html"
         "strings"
-        "math"
-        "utils/utilint"
-        "encoding/json"
-        "os"
         "fmt"
         "irc/message"
+        "path"
+        "path/filepath"
+        "os"
+        "net/url"
+        "io"
 )
 
-const scaleGood = 2
-const minOcc = 5
-const minProba = 0.1
-const maxProba = 0.9
-const defaultProba = 0.4
-
-type BsState struct {
-        GoodWords map[string] int
-        BadWords map[string] int
-        BsProba map[string] float64
-        GoodUrls []string
-        BadUrls []string
-}
-
-func defaultBsState() *BsState {
-    bsState := new(BsState)
-    bsState.GoodWords = map[string]int{}
-    bsState.BadWords = map[string]int{}
-    bsState.BsProba = map[string]float64{}
-    bsState.GoodUrls = []string{}
-    bsState.BadUrls = []string{}
-    return bsState
-}
-
-type TrainingType int
+const bsFile = "bsState"
+var urlStorage = map[bool]string{false : "good", true: "bad"}
 
 type BsQuery struct {
         Urls []string
         IsTraining bool
         Bs bool
         Channel string
+        IsReload bool
 }
 
-var reUrls, _ = regexp.Compile("https?://[^ ]*")
+type BsResults []BsResult
+type BsResult struct {
+        Url string
+        Title string
+        Score float64
+}
 
-func ExtractUrls(mess string) []string {
-        urls := reUrls.FindAllString(mess, -1)
-        for i := range urls {
-            if strings.Contains(urls[i], "imgur") {
-                urls[i] = strings.TrimSuffix(urls[i], ".jpeg")
-                urls[i] = strings.TrimSuffix(urls[i], ".jpg")
-            }
+func (res BsResults) String() string {
+        resStr := []string{}
+        for _, v := range res {
+                resStr = append(resStr, v.String())
         }
-        return urls
+        return strings.Join(resStr, " ")
 }
 
-func cleanTitle(title string) string {
-    title = strings.Replace(title, "\n", "", -1)
-    title = strings.TrimSpace(title)
-    return title
+func (res BsResult) String() string {
+        return fmt.Sprintf("[ %s : %.2f]", res.Title, res.Score)
 }
 
-func LookupTitle(url string) (string, bool) {
-        log.Printf("Lookup title for url %s\n", url)
-        resp, err := http.Get(url)
+func saveUrl(strUrl, content, dir string) string {
+        parsedUrl, urlErr := url.Parse(strUrl)
+        if urlErr != nil {
+                log.Printf("Invalid url, err: %s", urlErr)
+                return ""
+        }
+        dest := path.Join(dir, parsedUrl.Host, parsedUrl.Path)
+        os.MkdirAll(filepath.Dir(dest), 500)
+        file, err := os.OpenFile(dest, os.O_WRONLY | os.O_CREATE | os.O_TRUNC, 400)
         if err != nil {
-                log.Printf("Got error : %v\n", err)
-                return "", false
+                log.Printf("Error on writing url %s, err: %s", dest, err)
+                return ""
         }
-        defer resp.Body.Close()
-        z := html.NewTokenizer(resp.Body)
-        isTitle := false
-        for {
-                tt := z.Next()
-                switch tt {
-                case html.ErrorToken:
-                        return "", false
-                case html.TextToken:
-                        if isTitle {
-                                title := cleanTitle(string(z.Text()))
-                                if title != "" {
-                                    return title, true
-                                }
-                        }
-                case html.StartTagToken:
-                        tn, _ := z.TagName()
-                        if string(tn) == "title" {
-                                isTitle = true
-                        }
-                }
-        }
-        return "", false
-}
-
-func TokenizePage(url string) []string {
-        res := []string{}
-        resp, err := http.Get(url)
-        if err != nil {
-                log.Printf("Got error : %v\n", err)
-                return []string{}
-        }
-        defer resp.Body.Close()
-        z := html.NewTokenizer(resp.Body)
-        loop:
-        for {
-                tt := z.Next()
-                switch tt {
-                case html.ErrorToken:
-                        break loop
-                case html.TextToken:
-                        text := strings.ToLower(string(z.Text()))
-                        text = strings.Replace(text, "\n", "", -1)
-                        for _, word := range strings.Split(text, " ") {
-                                if strings.TrimSpace(word) != "" {
-                                        res = append(res, word)
-                                }
-                        }
-                }
-        }
-        return res
-}
-
-func enlargeCorpus(words []string, query BsQuery, state *BsState) {
-        log.Printf("Adding %d words to corpus", len(words))
-        if query.Bs {
-                state.BadUrls = append(state.BadUrls, query.Urls...)
-                for _, word := range words {
-                    state.BadWords[word] = state.BadWords[word] + 1
-                }
-        } else {
-                state.GoodUrls = append(state.GoodUrls, query.Urls...)
-                for _, word := range words {
-                    state.GoodWords[word] = state.GoodWords[word] + 1
-                }
-        }
-        state.buildProba()
-        saveBsState(state)
-}
-
-func (state *BsState) computeProbaForWord(word string) {
-        occGood := state.GoodWords[word]
-        occGood = occGood * scaleGood
-        occBad := state.BadWords[word]
-        if occGood + occBad < minOcc {
-                return
-        }
-        propGood := math.Min(1, float64(occGood) / float64(len(state.GoodWords)))
-        propBad := math.Min(1, float64(occBad) / float64(len(state.BadWords)))
-        proba := propBad / (propBad + propGood)
-        proba = math.Min(maxProba, proba)
-        proba = math.Max(minProba, proba)
-        state.BsProba[word] = proba
-}
-
-func (state *BsState) buildProba() {
-        state.BsProba = map[string]float64{}
-        for word := range state.GoodWords { state.computeProbaForWord(word) }
-        for word := range state.BadWords { state.computeProbaForWord(word) }
-}
-
-type prob struct {
-        word string
-        proba float64
-}
-
-type probs []prob
-
-func (p probs) Len() int {
-        return len(p)
-}
-
-func (p probs) Less(i, j int) bool {
-        dist1 := math.Abs(p[i].proba - 0.5)
-        dist2 := math.Abs(p[j].proba - 0.5)
-        return dist1 < dist2
-}
-
-func (p probs) Swap(i, j int) {
-        p[i], p[j] = p[j], p[i]
-}
-
-func (p probs) Combined() float64 {
-        num := 1.0
-        denum := 1.0
-        for _, prob := range p {
-                num *= prob.proba
-                denum *= (1 - prob.proba)
-        }
-        return num / (num + denum)
-}
-
-func (state *BsState) EvaluateBs(words []string) float64 {
-        prbs := probs{}
-        for _, word := range words {
-                proba, found :=  state.BsProba[word]
-                if !found {
-                        proba = 0.4
-                }
-                prbs = append(prbs, prob{word, proba})
-        }
-        prbs = prbs[:utilint.MinInt(15, len(prbs))]
-        log.Printf("Most significant probas are %v\n", prbs)
-        return prbs.Combined()
-}
-
-func saveBsState(state *BsState) {
-        file, _ := os.OpenFile("bstate", os.O_WRONLY | os.O_CREATE, 400)
-        enc := json.NewEncoder(file)
-        enc.Encode(state)
+        log.Printf("Saving %s in %s\n", strUrl, dest)
+        file.WriteString(content)
         file.Close()
+        return content
 }
 
-func loadBsState() *BsState {
-        file, err := os.Open("bstate")
-        bsState := defaultBsState()
+func (bsState *BsState) trainWithContent(content string, bs bool) {
+        words, _ := TokenizePage(strings.NewReader(content))
+        bsState.enlargeCorpus(words, bs)
+}
+
+func (bsState *BsState) evaluateReader(url string, r io.Reader) BsResult{
+        words, title := TokenizePage(r)
+        score := bsState.EvaluateBs(words)
+        return BsResult{url, title, score}
+}
+
+func (bsState *BsState) evaluateContent(url, content string) BsResult{
+        return bsState.evaluateReader(url, strings.NewReader(content))
+}
+
+func (bsState *BsState) evaluateUrl(url string) BsResult{
+        pageContent := downloadPage(url)
+        return bsState.evaluateContent(url, pageContent)
+}
+
+func (bsState *BsState) evaluateFile(filename string) BsResult{
+        file, err := os.Open(filename)
         if err != nil {
-                return bsState
+                log.Printf("Error on opening file %s", err)
+                return BsResult{}
         }
         defer file.Close()
-        dec := json.NewDecoder(file)
-        dec.Decode(bsState)
-        return bsState
+        return bsState.evaluateReader(filename, file)
 }
 
-func processQuery(query BsQuery, bsState *BsState) (string, bool) {
-    log.Printf("Got bs query %v\n", query)
-    results := []string{}
-    for _, url := range query.Urls {
-        title, found := LookupTitle(url)
-        if !found {continue}
-        words := TokenizePage(url)
-        if query.IsTraining {
-            enlargeCorpus(words, query, bsState)
-            results = append(results, url)
-        } else {
-            score := bsState.EvaluateBs(words)
-            results = append(results,
-            fmt.Sprintf("[ %s : %.2f]", title, score))
+func (bsState *BsState) trainWithFile(filename string, bs bool) {
+        file, err := os.Open(filename)
+        if err != nil {
+                log.Printf("Error on opening file %s", err)
+                return
         }
-    }
-    if len(results) == 0 { return "", false}
-    if query.IsTraining {
-        return fmt.Sprintf("Training with %s", strings.Join(results, " ")), true
-    } else {
-        return strings.Join(results, " "), true
-    }
+        words, _ := TokenizePage(file)
+        bsState.enlargeCorpus(words, bs)
+}
+
+func (bsState *BsState) processTrainQuery(query BsQuery) {
+        contents := []string{}
+        for _, url := range query.Urls {
+                pageContent := downloadPage(url)
+                content := saveUrl(url, pageContent, urlStorage[query.Bs])
+                contents = append(contents, content)
+                bsState.trainWithContent(content, query.Bs)
+        }
+}
+
+func (bsState *BsState) processEvaluateQuery(query BsQuery) BsResults {
+        results := []BsResult{}
+        for _, url := range query.Urls {
+                results = append(results, bsState.evaluateUrl(url))
+        }
+        return results
+}
+
+func (bsState *BsState) walker(bs bool) func(path string, info os.FileInfo, err error) error {
+        return func(path string, info os.FileInfo, err error) error {
+                if err != nil {
+                        log.Printf("Error on walk : %s\n", err)
+                        return err
+                }
+                if !info.IsDir() {
+                        log.Printf("Loading path %s with bs = %v", path, bs)
+                        bsState.trainWithFile(path, bs)
+                }
+                return nil
+        }
+}
+
+func (bsState *BsState) processReload() {
+        bsState.GoodWords = map[string]int {}
+        bsState.BadWords = map[string]int {}
+        bsState.BsProba = map[string]float64 {}
+        filepath.Walk(urlStorage[true], bsState.walker(true))
+        filepath.Walk(urlStorage[false], bsState.walker(false))
 }
 
 func BsWorker(requestChan chan BsQuery, responseChannel chan fmt.Stringer) {
-    bsState := loadBsState()
-    for {
-        query := <-requestChan
-        res, found := processQuery(query, bsState)
-        if found {
-            responseChannel<- message.MsgSend{query.Channel, res}
+        bsState := loadBsState(bsFile)
+        for {
+                query := <-requestChan
+                if query.IsTraining {
+                        bsState.processTrainQuery(query)
+                        bsState.save(bsFile)
+                        responseChannel<- message.MsgSend{query.Channel,
+                                fmt.Sprintf("Training with urls %v", query.Urls)}
+                } else if query.IsReload {
+                        bsState.processReload()
+                        bsState.save(bsFile)
+                } else {
+                        results := bsState.processEvaluateQuery(query)
+                        responseChannel<- message.MsgSend{query.Channel, results.String()}
+                }
         }
-    }
 }

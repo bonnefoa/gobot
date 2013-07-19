@@ -3,6 +3,7 @@ package bsmeter
 import (
     "testing"
     "testing/assert"
+    "math"
 )
 
 func TestExtractUrls(t *testing.T) {
@@ -11,27 +12,11 @@ func TestExtractUrls(t *testing.T) {
         []string{"http://w1", "https://w2", "https://imgur.com/toto"})
 }
 
-func checkTitle(t *testing.T, url, title string) {
-        res, found := LookupTitle(url)
-        assert.AssertEquals(t, true, found)
-        assert.AssertEquals(t, res, title)
-}
-
-func TestLookupTitle(t *testing.T) {
-        checkTitle(t, "http://i.imgur.com/EHILhaP",
-        "Starcraft Units to scale - Imgur")
-        checkTitle(t, "https://github.com/",
-        "GitHub · Build software better, together.")
-        checkTitle(t, "http://xkcd.com/1239/",
-        "xkcd: Social Media")
-}
-
 func TestEvaluateBs(t *testing.T) {
         good := map[string]int{"jam": 10}
         bad := map[string]int{"ham": 9, "to":4}
         probs := map[string]float64{}
-        emptyList := []string{}
-        state := BsState{good, bad, probs, emptyList, emptyList}
+        state := BsState{good, bad, probs}
         state.buildProba()
 
         res := state.EvaluateBs([]string{"toto"})
@@ -48,12 +33,9 @@ func TestSaveState(t *testing.T) {
         good := map[string]int{"to": 10}
         bad := map[string]int{"ta": 9}
         probs := map[string]float64{}
-        emptyList := []string{}
-        state := BsState{good, bad, probs, emptyList, emptyList}
-
-
-        saveBsState(&state)
-        loaded := loadBsState()
+        state := BsState{good, bad, probs}
+        state.save("to")
+        loaded := loadBsState("to")
         assert.AssertEquals(t, loaded.GoodWords["to"], 10)
 }
 
@@ -61,14 +43,39 @@ func TestEnlargeCorpus(t *testing.T) {
         good := map[string]int{"to": 10}
         bad := map[string]int{"ta": 9}
         probs := map[string]float64{}
-        emptyList := []string{}
-        state := BsState{good, bad, probs, emptyList, emptyList}
-
-        urls := []string{"https://ga"}
-        bsQuery := BsQuery{urls, true, true, "test"}
+        state := BsState{good, bad, probs}
 
         words := []string{"test"}
-        enlargeCorpus(words, bsQuery, &state)
+        state.enlargeCorpus(words, true)
         assert.AssertEquals(t, state.BadWords["test"], 1)
-        assert.AssertStringSliceEquals(t, state.BadUrls, urls)
+}
+
+func TestParseFiles(t *testing.T) {
+        state := defaultBsState()
+        state.trainWithFile("good/first", false)
+        t.Logf("State after training is %v\n", state)
+        assert.AssertEquals(t, state.GoodWords["the"], 8)
+        assert.AssertFalse(t, math.IsNaN(state.BsProba["the"]))
+        assert.AssertFloatInferior(t, state.BsProba["the"], 0.5)
+
+        state.trainWithFile("bad/first", true)
+        t.Logf("State after training is %v\n", state)
+        assert.AssertEquals(t, state.BadWords["learn"], 5)
+        assert.AssertFalse(t, math.IsNaN(state.BsProba["learn"]))
+        assert.AssertFalse(t, math.IsNaN(state.BsProba["learn"]))
+        assert.AssertFloatSuperior(t, state.BsProba["learn"], 0.5)
+}
+
+func TestReload(t *testing.T) {
+        state := defaultBsState()
+        state.processReload()
+        t.Logf("State after reload is %v\n", state)
+        assert.AssertEquals(t, state.GoodWords["the"], 8)
+}
+
+func TestLoadAndEvaluate(t *testing.T) {
+        state := defaultBsState()
+        state.trainWithFile("bad/second", true)
+        res := state.evaluateFile("bad/second")
+        assert.AssertFloatSuperior(t, res.Score, 0.5)
 }
