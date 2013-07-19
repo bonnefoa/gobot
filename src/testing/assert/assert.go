@@ -19,6 +19,20 @@ func AssertNotNil(t *testing.T, a interface{}) {
         }
 }
 
+func AssertTrue(t *testing.T, cond bool) {
+        if !cond {
+                t.Logf("Excepted true, got %#v\n", cond)
+                t.FailNow()
+        }
+}
+
+func AssertFalse(t *testing.T, cond bool) {
+        if cond {
+                t.Logf("Excepted false, got %#v\n", cond)
+                t.FailNow()
+        }
+}
+
 func AssertEquals(t *testing.T, a interface{}, b interface{}) {
         if a != b {
                 t.Logf("%#v != %#v\n", a, b)
@@ -26,16 +40,23 @@ func AssertEquals(t *testing.T, a interface{}, b interface{}) {
         }
 }
 
+func AssertNotEquals(t *testing.T, a interface{}, b interface{}) {
+        if a == b {
+                t.Logf("%#v == %#v\n", a, b)
+                t.FailNow()
+        }
+}
+
 func AssertFloatSuperior(t *testing.T, a float64, b float64) {
         if a < b {
-                t.Logf("%#v != %#v\n", a, b)
+                t.Logf("%#v < %#v\n", a, b)
                 t.FailNow()
         }
 }
 
 func AssertFloatInferior(t *testing.T,a float64, b float64) {
         if a > b {
-                t.Logf("%#v != %#v\n", a, b)
+                t.Logf("%#v > %#v\n", a, b)
                 t.FailNow()
         }
 }
