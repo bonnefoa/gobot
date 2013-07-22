@@ -310,12 +310,23 @@ func handleRotate(state State, msg message.MsgPrivate) bool {
         return true
 }
 
+func removeFirstWord(src string) string{
+        return src[strings.Index(src," ") + 1:]
+}
+
 func handleBsRequest(state State, msg message.MsgPrivate) bool {
-        if !strings.Contains(strings.ToLower(msg.Msg), "http") { return false }
-        urls := bsmeter.ExtractUrls(msg.Msg)
-        if len(urls) == 0 { return false }
-        state.BsQueryChannel <- bsmeter.BsQuery{Urls:urls, Channel:msg.Response()}
-        return true
+        lowerMsg := strings.ToLower(msg.Msg)
+        if strings.HasPrefix(lowerMsg, "isbs") {
+                phrase := removeFirstWord(lowerMsg)
+                state.BsQueryChannel <- bsmeter.BsQuery{Phrase:phrase, Channel:msg.Response()}
+                return true
+        } else if strings.Contains(lowerMsg, "http") {
+                urls := bsmeter.ExtractUrls(msg.Msg)
+                if len(urls) == 0 { return false }
+                state.BsQueryChannel <- bsmeter.BsQuery{Urls:urls, Channel:msg.Response()}
+                return true
+        }
+        return false
 }
 
 func handleBsTraining(state State, msg message.MsgPrivate) bool {
@@ -329,8 +340,14 @@ func handleBsTraining(state State, msg message.MsgPrivate) bool {
         }
         bs := strings.HasPrefix(lowerMsg, "bs")
         urls := bsmeter.ExtractUrls(msg.Msg)
-        if len(urls) == 0 { return false }
-        state.BsQueryChannel <- bsmeter.BsQuery{Urls:urls, IsTraining:true, Bs:bs, Channel:msg.Response()}
+        if len(urls) == 0 {
+                state.BsQueryChannel<- bsmeter.BsQuery{
+                        Phrase:removeFirstWord(lowerMsg),
+                        IsTraining:true, Bs:bs, Channel:msg.Response()}
+        } else {
+                state.BsQueryChannel<- bsmeter.BsQuery{Urls:urls,
+                        IsTraining:true, Bs:bs, Channel:msg.Response()}
+        }
         return true
 }
 
