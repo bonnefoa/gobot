@@ -30,19 +30,19 @@ func cleanTitle(title string) string {
     return title
 }
 
-func downloadPage(url string) string {
+func downloadPage(url string) []byte {
     resp, err := http.Get(url)
     if err != nil {
         log.Printf("Got error : %v\n", err)
-        return ""
+        return []byte{}
     }
     defer resp.Body.Close()
     content, errRead := ioutil.ReadAll(resp.Body)
     if errRead != nil {
         log.Printf("Got error : %v\n", err)
-        return ""
+        return []byte{}
     }
-    return string(content)
+    return content
 }
 
 func tokenizeWords(text string) []string{

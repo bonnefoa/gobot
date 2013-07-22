@@ -11,6 +11,8 @@ import (
         "net/url"
         "io"
         "io/ioutil"
+        "bytes"
+        "os/exec"
 )
 
 const bsFile = "bsState"
@@ -57,21 +59,40 @@ func (res BsResult) String() string {
         return fmt.Sprintf("[ %s : %.2f]", res.Title, res.Score)
 }
 
-func saveUrl(strUrl, content, dir string) {
-        parsedUrl, urlErr := url.Parse(strUrl)
-        if urlErr != nil {
-                log.Printf("Invalid url, err: %s", urlErr)
-                return
+func isPdf(url string) bool { return strings.HasSuffix(url, ".pdf") }
+
+func savePdfToText(url *url.URL, content []byte, dir string) string {
+        dest := path.Join(dir, url.Host, url.Path)
+        tempDest := path.Join("/tmp", url.Host, url.Path)
+        os.MkdirAll(filepath.Dir(tempDest), 500)
+        os.MkdirAll(filepath.Dir(dest), 500)
+        file, err := os.OpenFile(tempDest, os.O_WRONLY | os.O_CREATE | os.O_TRUNC, 400)
+        if err != nil {
+                log.Printf("Error on writing url %s, err: %s", tempDest, err)
+                return ""
         }
-        dest := path.Join(dir, parsedUrl.Host, parsedUrl.Path)
+        log.Printf("Saving %s in %s\n", url, tempDest)
+        file.Write(content)
+        file.Close()
+        cmd := exec.Command("pdftotext", tempDest, dest)
+        err = cmd.Run()
+        if err != nil {
+                log.Printf("Error on command %s : %s", cmd, err)
+                return ""
+        }
+        return dest
+}
+
+func saveUrl(url *url.URL, content []byte, dir string) {
+        dest := path.Join(dir, url.Host, url.Path)
         os.MkdirAll(filepath.Dir(dest), 500)
         file, err := os.OpenFile(dest, os.O_WRONLY | os.O_CREATE | os.O_TRUNC, 400)
         if err != nil {
                 log.Printf("Error on writing url %s, err: %s", dest, err)
                 return
         }
-        log.Printf("Saving %s in %s\n", strUrl, dest)
-        file.WriteString(content)
+        log.Printf("Saving %s in %s\n", url, dest)
+        file.Write(content)
         file.Close()
 }
 
@@ -86,14 +107,26 @@ func appendPhrase(phrase, dest string) {
         file.Close()
 }
 
-func (bsState *BsState) trainWithPageContent(content string, bs bool) {
-        words, _ := TokenizePage(strings.NewReader(content))
+func (bsState *BsState) trainWithPageContent(content []byte, bs bool) {
+        words, _ := TokenizePage(bytes.NewReader(content))
         bsState.enlargeCorpus(words, bs)
 }
 
 func (bsState *BsState) trainWithPhrase(phrase string, bs bool) {
         words := tokenizeWords(phrase)
         bsState.enlargeCorpus(words, bs)
+}
+
+func (bsState *BsState) trainWithTextFile(path string, bs bool) {
+        file, err := os.Open(path)
+        if err != nil {
+                log.Printf("Error on opening file %s", path)
+                return
+        }
+        content, _ := ioutil.ReadAll(file)
+        for _, line := range strings.Split(string(content), "\n") {
+                bsState.trainWithPhrase(line ,bs)
+        }
 }
 
 func (bsState *BsState) evaluateHtmlReader(url string, r io.Reader) BsResult{
@@ -104,7 +137,25 @@ func (bsState *BsState) evaluateHtmlReader(url string, r io.Reader) BsResult{
 
 func (bsState *BsState) evaluateUrl(url string) BsResult{
         pageContent := downloadPage(url)
-        return bsState.evaluateHtmlReader(url, strings.NewReader(pageContent))
+        return bsState.evaluateHtmlReader(url,
+                bytes.NewReader(pageContent))
+}
+
+func (bsState *BsState) evaluatePdf(strUrl string) BsResult{
+        parsedUrl, _ := url.Parse(strUrl)
+        pageContent := downloadPage(strUrl)
+        textFile := savePdfToText(parsedUrl,
+                pageContent, "/tmp/temp_pdf")
+
+        file, err := os.Open(textFile)
+        if err != nil {
+                log.Printf("Error on opening file %s", textFile)
+                return BsResult{}
+        }
+        content, _ := ioutil.ReadAll(file)
+        bsResult := bsState.evaluatePhrase(string(content))
+        bsResult.Title = strUrl
+        return bsResult
 }
 
 func truncatePhrase(phrase string, max int) string {
@@ -139,10 +190,20 @@ func (bsState *BsState) trainWithHtmlFile(filename string, bs bool) {
 
 func (bsState *BsState) processTrainQuery(query BsQuery) {
         storage := urlStorage[query.Bs]
-        for _, url := range query.Urls {
-                pageContent := downloadPage(url)
-                saveUrl(url, pageContent, storage)
-                bsState.trainWithPageContent(pageContent, query.Bs)
+        for _, strUrl := range query.Urls {
+                pageContent := downloadPage(strUrl)
+                parsedUrl, urlErr := url.Parse(strUrl)
+                if urlErr != nil {
+                        log.Printf("Invalid url, err: %s", urlErr)
+                        continue
+                }
+                if isPdf(strUrl) {
+                        textPdf := savePdfToText(parsedUrl, pageContent, storage)
+                        bsState.trainWithTextFile(textPdf, query.Bs)
+                } else {
+                        saveUrl(parsedUrl, pageContent, storage)
+                        bsState.trainWithPageContent(pageContent, query.Bs)
+                }
         }
         if query.Phrase != "" {
                 dest := getPhraseStorage(query.Bs)
@@ -154,7 +215,11 @@ func (bsState *BsState) processTrainQuery(query BsQuery) {
 func (bsState *BsState) evaluateQuery(query BsQuery) BsResults {
         results := []BsResult{}
         for _, url := range query.Urls {
-                results = append(results, bsState.evaluateUrl(url))
+                if isPdf(url) {
+                        results = append(results, bsState.evaluatePdf(url))
+                } else {
+                        results = append(results, bsState.evaluateUrl(url))
+                }
         }
         if query.Phrase != "" {
                 results = append(results, bsState.evaluatePhrase(query.Phrase))
@@ -168,24 +233,17 @@ func (bsState *BsState) walker(bs bool) func(path string, info os.FileInfo, err 
                         log.Printf("Error on walk : %s\n", err)
                         return err
                 }
-                if !info.IsDir() {
+                if info.IsDir() {
+                        return nil
+                }
+                if isPdf(path) {
+                        log.Printf("Loading pdf path %s with bs = %v", path, bs)
+                        bsState.trainWithTextFile(path, bs)
+                } else {
                         log.Printf("Loading path %s with bs = %v", path, bs)
                         bsState.trainWithHtmlFile(path, bs)
                 }
                 return nil
-        }
-}
-
-func (bsState *BsState) reloadPhrases(bs bool) {
-        storage := getPhraseStorage(bs)
-        file, err := os.Open(storage)
-        if err != nil {
-                log.Printf("Error on opening file %s", storage)
-                return
-        }
-        content, _ := ioutil.ReadAll(file)
-        for _, line := range strings.Split(string(content), "\n") {
-                bsState.trainWithPhrase(line ,bs)
         }
 }
 
@@ -195,8 +253,8 @@ func (bsState *BsState) processReload() {
         bsState.BsProba = map[string]float64 {}
         filepath.Walk(urlStorage[true], bsState.walker(true))
         filepath.Walk(urlStorage[false], bsState.walker(false))
-        bsState.reloadPhrases(true)
-        bsState.reloadPhrases(false)
+        bsState.trainWithTextFile(getPhraseStorage(true), true)
+        bsState.trainWithTextFile(getPhraseStorage(false), false)
 }
 
 func BsWorker(requestChan chan BsQuery, responseChannel chan fmt.Stringer) {
