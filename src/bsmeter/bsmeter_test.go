@@ -4,6 +4,7 @@ import (
     "testing"
     "testing/assert"
     "math"
+    "os"
 )
 
 func TestExtractUrls(t *testing.T) {
@@ -52,13 +53,13 @@ func TestEnlargeCorpus(t *testing.T) {
 
 func TestParseFiles(t *testing.T) {
         state := defaultBsState()
-        state.trainWithFile("good/first", false)
+        state.trainWithHtmlFile("good/first", false)
         t.Logf("State after training is %v\n", state)
         assert.AssertEquals(t, state.GoodWords["the"], 8)
         assert.AssertFalse(t, math.IsNaN(state.BsProba["the"]))
         assert.AssertFloatInferior(t, state.BsProba["the"], 0.5)
 
-        state.trainWithFile("bad/first", true)
+        state.trainWithHtmlFile("bad/first", true)
         t.Logf("State after training is %v\n", state)
         assert.AssertEquals(t, state.BadWords["learn"], 5)
         assert.AssertFalse(t, math.IsNaN(state.BsProba["learn"]))
@@ -75,7 +76,32 @@ func TestReload(t *testing.T) {
 
 func TestLoadAndEvaluate(t *testing.T) {
         state := defaultBsState()
-        state.trainWithFile("bad/second", true)
-        res := state.evaluateFile("bad/second")
+        state.trainWithHtmlFile("bad/second", true)
+        res := state.evaluateHtmlFile("bad/second")
         assert.AssertFloatSuperior(t, res.Score, 0.5)
+}
+
+func TestTrainPhrases(t *testing.T) {
+        state := defaultBsState()
+        state.trainWithPhrase("test bs bs bs bs bs", true)
+        state.trainWithPhrase("test nobs nobs nobs nobs nobs", false)
+        t.Logf("State %v", state)
+        res := state.evaluatePhrase("bs")
+        assert.AssertFloatSuperior(t, res.Score, 0.5)
+        res = state.evaluatePhrase("nobs")
+        assert.AssertFloatInferior(t, res.Score, 0.5)
+}
+
+func TestReloadPhrases(t *testing.T) {
+        os.Remove(getPhraseStorage(true))
+        os.Remove(getPhraseStorage(false))
+        state := defaultBsState()
+        state.processTrainQuery(BsQuery{Phrase:"test bs bs bs bs bs", Bs:true})
+        state.processTrainQuery(BsQuery{Phrase:"test nobs nobs nobs nobs nobs", Bs:false})
+        state.processReload()
+        t.Logf("State %v", state)
+        res := state.evaluatePhrase("bs")
+        assert.AssertFloatSuperior(t, res.Score, 0.5)
+        res = state.evaluatePhrase("nobs")
+        assert.AssertFloatInferior(t, res.Score, 0.5)
 }

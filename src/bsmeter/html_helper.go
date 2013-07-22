@@ -45,6 +45,22 @@ func downloadPage(url string) string {
     return string(content)
 }
 
+func tokenizeWords(text string) []string{
+        res := []string{}
+        text = strings.ToLower(text)
+        text = strings.Replace(text, "\n", "", -1)
+        for _, word := range strings.Split(text, " ") {
+                word = strings.TrimSpace(word)
+                if notWords.FindAllString(word, 1) != nil {
+                        continue
+                }
+                if word != "" {
+                        res = append(res, word)
+                }
+        }
+        return res
+}
+
 func TokenizePage(r io.Reader) ([]string, string) {
         res := []string{}
         z := html.NewTokenizer(r)
@@ -57,21 +73,12 @@ func TokenizePage(r io.Reader) ([]string, string) {
                 case html.ErrorToken:
                         break loop
                 case html.TextToken:
+                        text := string(z.Text())
                         if isTitle {
-                            title = cleanTitle(string(z.Text()))
+                            title = cleanTitle(text)
                             continue
                         }
-                        text := strings.ToLower(string(z.Text()))
-                        text = strings.Replace(text, "\n", "", -1)
-                        for _, word := range strings.Split(text, " ") {
-                                word = strings.TrimSpace(word)
-                                if notWords.FindAllString(word, 1) != nil {
-                                    continue
-                                }
-                                if word != "" {
-                                        res = append(res, word)
-                                }
-                        }
+                        res = append(res, tokenizeWords(text)...)
                 case html.EndTagToken:
                         tn, _ := z.TagName()
                         if string(tn) == "title" {
