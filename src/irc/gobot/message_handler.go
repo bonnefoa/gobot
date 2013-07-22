@@ -316,14 +316,22 @@ func removeFirstWord(src string) string{
 
 func handleBsRequest(state State, msg message.MsgPrivate) bool {
         lowerMsg := strings.ToLower(msg.Msg)
-        if strings.HasPrefix(lowerMsg, "isbs") {
-                phrase := removeFirstWord(lowerMsg)
-                state.BsQueryChannel <- bsmeter.BsQuery{Phrase:phrase, Channel:msg.Response()}
-                return true
-        } else if strings.Contains(lowerMsg, "http") {
+        bsQuery := bsmeter.BsQuery{Channel:msg.Response()}
+        hasBsQuery := strings.HasPrefix(lowerMsg, "isbs")
+        hasHttp := strings.Contains(lowerMsg, "http")
+        if hasHttp {
                 urls := bsmeter.ExtractUrls(msg.Msg)
-                if len(urls) == 0 { return false }
-                state.BsQueryChannel <- bsmeter.BsQuery{Urls:urls, Channel:msg.Response()}
+                bsQuery.Urls = urls
+        }
+        if hasBsQuery {
+                phrase := removeFirstWord(lowerMsg)
+                for _, url := range bsQuery.Urls {
+                        phrase = strings.Replace(phrase, url, "", -1)
+                }
+                bsQuery.Phrase = phrase
+        }
+        if hasHttp || hasBsQuery {
+                state.BsQueryChannel <- bsQuery
                 return true
         }
         return false
