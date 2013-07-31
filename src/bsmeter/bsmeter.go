@@ -271,7 +271,9 @@ func BsWorker(requestChan chan BsQuery, responseChannel chan fmt.Stringer) {
                         bsState.save(bsFile)
                 } else {
                         results := bsState.evaluateQuery(query)
-                        responseChannel<- message.MsgSend{query.Channel, results.String()}
+                        if len(results) > 0 {
+                            responseChannel<- message.MsgSend{query.Channel, results.String()}
+                        }
                 }
         }
 }
