@@ -5,6 +5,8 @@ import (
     "testing/assert"
     "math"
     "os"
+    "net/url"
+    "io/ioutil"
 )
 
 func TestExtractUrls(t *testing.T) {
@@ -104,4 +106,17 @@ func TestReloadPhrases(t *testing.T) {
         assert.AssertFloatSuperior(t, res.Score, 0.5)
         res = state.evaluatePhrase("nobs")
         assert.AssertFloatInferior(t, res.Score, 0.5)
+}
+
+func TestParsePdf(t *testing.T) {
+        file, _ := os.Open("test.pdf")
+        parsedUrl, _ := url.Parse("http://test.pdf")
+        content, _ := ioutil.ReadAll(file)
+        f := savePdf(parsedUrl, content, "/tmp/test_pdf")
+
+        res, _ := os.Open(f)
+        parsedText, _ := ioutil.ReadAll(res)
+        t.Logf("Parsed text is %s\n", parsedText)
+        assert.AssertNotEquals(t, parsedText, "")
+        t.Fail()
 }
