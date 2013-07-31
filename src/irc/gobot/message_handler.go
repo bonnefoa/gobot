@@ -15,6 +15,7 @@ import (
         "strconv"
         "irc/metapi"
         "bsmeter"
+        "meteo"
 )
 
 func placeBet(state State, nick string, msg message.MsgPrivate, ts time.Time, isAdmin bool) {
@@ -360,10 +361,21 @@ func handleBsTraining(state State, msg message.MsgPrivate) bool {
         return true
 }
 
+func handleMeteo(state State, msg message.MsgPrivate) bool {
+        lowerMsg := strings.ToLower(msg.Msg)
+        if lowerMsg == "meteo" || lowerMsg == "météo" {
+                weather := meteo.FetchWeatherFromUrl(state.Conf.Meteo.Url)
+                log.Printf("Fetched %q", weather)
+                state.ResponseChannel <- message.MsgSend{msg.Response(), strings.Join(weather, "|")}
+                return true
+        }
+        return false
+}
+
 var handlers = []func(State, message.MsgPrivate) bool { handleBsTraining, handleBsRequest, handleHelp,
         handleTop, handleSpecificTop, handleScores, handlePlaceBet, handleAdminBet,
         handleBet, handleRollback, handleReset, handleBetSpecificTimeZone, handleTimezoneConversion,
-        handlePutf8, handleDodo, handleTroll, handleTriggers, handleMetapi, handleRotate}
+        handlePutf8, handleDodo, handleTroll, handleTriggers, handleMetapi, handleRotate, handleMeteo}
 
 func handleMessage(state State, msg message.MsgPrivate) {
         log.Printf("Received message %s", msg.Msg)

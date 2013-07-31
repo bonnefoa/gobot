@@ -17,12 +17,18 @@ import (
         "runtime"
         "runtime/pprof"
         "bsmeter"
+        "meteo"
 )
 
 type Trigger struct {
         Words []string
         Results []string
         IsPuke bool
+}
+
+type Meteo struct {
+        Url string
+        Channel string
 }
 
 type BotConf struct {
@@ -36,6 +42,7 @@ type BotConf struct {
         Name string
         RealName string
         Triggers []Trigger
+        Meteo    Meteo
 }
 
 type State struct {
@@ -125,6 +132,7 @@ func connect() {
         go join(conf, responseChannel)
         go metapi.SearchWorker(piQueryChannel, responseChannel)
         go bsmeter.BsWorker(bsQueryChannel, responseChannel)
+        go meteo.RainWatcher(conf.Meteo.Url, conf.Meteo.Channel, responseChannel)
 
         for {
                 select {
