@@ -222,7 +222,10 @@ func (bsState *BsState) evaluateQuery(query BsQuery) BsResults {
                 if isPdf(url) {
                         results = append(results, bsState.evaluatePdf(url))
                 } else {
-                        results = append(results, bsState.evaluateUrl(url))
+                        bsResult := bsState.evaluateUrl(url)
+                        if bsResult.Title != "" {
+                            results = append(results, bsResult)
+                        }
                 }
         }
         if query.Phrase != "" {
