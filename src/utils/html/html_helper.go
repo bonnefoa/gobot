@@ -1,4 +1,4 @@
-package bsmeter
+package html
 
 import (
         "net/http"
@@ -30,7 +30,7 @@ func cleanTitle(title string) string {
     return title
 }
 
-func downloadPage(url string) []byte {
+func DownloadPage(url string) []byte {
     resp, err := http.Get(url)
     if err != nil {
         log.Printf("Got error : %v\n", err)
@@ -45,7 +45,7 @@ func downloadPage(url string) []byte {
     return content
 }
 
-func tokenizeWords(text string) []string{
+func TokenizeWords(text string) []string{
         res := []string{}
         text = strings.ToLower(text)
         text = strings.Replace(text, "\n", "", -1)
@@ -78,7 +78,7 @@ func TokenizePage(r io.Reader) ([]string, string) {
                             title = cleanTitle(text)
                             continue
                         }
-                        res = append(res, tokenizeWords(text)...)
+                        res = append(res, TokenizeWords(text)...)
                 case html.EndTagToken:
                         tn, _ := z.TagName()
                         if string(tn) == "title" {

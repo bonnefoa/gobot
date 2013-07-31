@@ -11,6 +11,7 @@ import (
         "errors"
         "math/rand"
         "utils/utilstring"
+        "utils/html"
         "strconv"
         "irc/metapi"
         "bsmeter"
@@ -320,7 +321,7 @@ func handleBsRequest(state State, msg message.MsgPrivate) bool {
         hasBsQuery := strings.HasPrefix(lowerMsg, "isbs")
         hasHttp := strings.Contains(lowerMsg, "http")
         if hasHttp {
-                urls := bsmeter.ExtractUrls(msg.Msg)
+                urls := html.ExtractUrls(msg.Msg)
                 bsQuery.Urls = urls
         }
         if hasBsQuery {
@@ -347,7 +348,7 @@ func handleBsTraining(state State, msg message.MsgPrivate) bool {
                 return false
         }
         bs := strings.HasPrefix(lowerMsg, "bs")
-        urls := bsmeter.ExtractUrls(msg.Msg)
+        urls := html.ExtractUrls(msg.Msg)
         if len(urls) == 0 {
                 state.BsQueryChannel<- bsmeter.BsQuery{
                         Phrase:removeFirstWord(lowerMsg),

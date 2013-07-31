@@ -13,6 +13,7 @@ import (
         "io/ioutil"
         "bytes"
         "os/exec"
+        "utils/html"
 )
 
 const bsFile = "bsState"
@@ -108,12 +109,12 @@ func appendPhrase(phrase, dest string) {
 }
 
 func (bsState *BsState) trainWithPageContent(content []byte, bs bool) {
-        words, _ := TokenizePage(bytes.NewReader(content))
+        words, _ := html.TokenizePage(bytes.NewReader(content))
         bsState.enlargeCorpus(words, bs)
 }
 
 func (bsState *BsState) trainWithPhrase(phrase string, bs bool) {
-        words := tokenizeWords(phrase)
+        words := html.TokenizeWords(phrase)
         bsState.enlargeCorpus(words, bs)
 }
 
@@ -130,20 +131,20 @@ func (bsState *BsState) trainWithTextFile(path string, bs bool) {
 }
 
 func (bsState *BsState) evaluateHtmlReader(url string, r io.Reader) BsResult{
-        words, title := TokenizePage(r)
+        words, title := html.TokenizePage(r)
         score := bsState.EvaluateBs(words)
         return BsResult{title, score}
 }
 
 func (bsState *BsState) evaluateUrl(url string) BsResult{
-        pageContent := downloadPage(url)
+        pageContent := html.DownloadPage(url)
         return bsState.evaluateHtmlReader(url,
                 bytes.NewReader(pageContent))
 }
 
 func (bsState *BsState) evaluatePdf(strUrl string) BsResult{
         parsedUrl, _ := url.Parse(strUrl)
-        pageContent := downloadPage(strUrl)
+        pageContent := html.DownloadPage(strUrl)
         textFile := savePdfToText(parsedUrl,
                 pageContent, "/tmp/temp_pdf")
 
@@ -164,7 +165,7 @@ func truncatePhrase(phrase string, max int) string {
 }
 
 func (bsState *BsState) evaluatePhrase(phrase string) BsResult{
-        words := tokenizeWords(phrase)
+        words := html.TokenizeWords(phrase)
         return BsResult{truncatePhrase(phrase, 10), bsState.EvaluateBs(words)}
 }
 
@@ -184,14 +185,14 @@ func (bsState *BsState) trainWithHtmlFile(filename string, bs bool) {
                 log.Printf("Error on opening file %s", err)
                 return
         }
-        words, _ := TokenizePage(file)
+        words, _ := html.TokenizePage(file)
         bsState.enlargeCorpus(words, bs)
 }
 
 func (bsState *BsState) processTrainQuery(query BsQuery) {
         storage := urlStorage[query.Bs]
         for _, strUrl := range query.Urls {
-                pageContent := downloadPage(strUrl)
+                pageContent := html.DownloadPage(strUrl)
                 parsedUrl, urlErr := url.Parse(strUrl)
                 if urlErr != nil {
                         log.Printf("Invalid url, err: %s", urlErr)
