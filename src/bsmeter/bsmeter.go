@@ -189,8 +189,9 @@ func (bsState *BsState) trainWithHtmlFile(filename string, bs bool) {
         bsState.enlargeCorpus(words, bs)
 }
 
-func (bsState *BsState) processTrainQuery(query BsQuery) {
+func (bsState *BsState) processTrainQuery(query BsQuery) []string {
         storage := urlStorage[query.Bs]
+        processed := []string{}
         for _, strUrl := range query.Urls {
                 pageContent := html.DownloadPage(strUrl)
                 parsedUrl, urlErr := url.Parse(strUrl)
@@ -198,6 +199,7 @@ func (bsState *BsState) processTrainQuery(query BsQuery) {
                         log.Printf("Invalid url, err: %s", urlErr)
                         continue
                 }
+                processed = append(processed, strUrl)
                 if isPdf(strUrl) {
                         textPdf := savePdfToText(parsedUrl, pageContent, storage)
                         bsState.trainWithTextFile(textPdf, query.Bs)
@@ -211,6 +213,7 @@ func (bsState *BsState) processTrainQuery(query BsQuery) {
                 appendPhrase(query.Phrase, dest)
                 bsState.trainWithPhrase(query.Phrase, query.Bs)
         }
+        return processed
 }
 
 func (bsState *BsState) evaluateQuery(query BsQuery) BsResults {
@@ -263,9 +266,11 @@ func BsWorker(requestChan chan BsQuery, responseChannel chan fmt.Stringer) {
         for {
                 query := <-requestChan
                 if query.IsTraining {
-                        bsState.processTrainQuery(query)
+                        processedUrls := bsState.processTrainQuery(query)
                         bsState.save(bsFile)
-                        responseChannel<- message.MsgSend{query.Channel, query.String()}
+                        if len(processedUrls) > 0 {
+                            responseChannel<- message.MsgSend{query.Channel, fmt.Sprintf("Training with %s", strings.Join(processedUrls, " "))}
+                        }
                 } else if query.IsReload {
                         bsState.processReload()
                         bsState.save(bsFile)
