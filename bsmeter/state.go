@@ -240,7 +240,6 @@ func (bsState *BsState) evaluateQuery(query BsQuery) BsResults {
                         log.Printf("Got err for evaluation of %s : %s", strUrl, err)
                         continue
                 }
-                results = append(results, bsResult)
                 if bsResult.Title != "" {
                         results = append(results, bsResult)
                 }
