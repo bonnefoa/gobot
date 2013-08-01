@@ -5,13 +5,23 @@ import (
 	"math/rand"
 	"strings"
 	"unicode"
+	"regexp"
 )
+
+var notWords, _ = regexp.Compile("[^a-zA-Z]+")
 
 var rotateLetter = [...]rune{'ɐ', 'q', 'ɔ', 'p', 'ǝ', 'ɟ', 'ƃ', 'ɥ', 'ı', 'ɾ', 'ʞ', 'l', 'ɯ', 'u', 'o', 'd', 'b', 'ɹ', 's', 'ʇ', 'n', 'ʌ', 'ʍ', 'x', 'ʎ', 'z'}
 var rotateDigit = [...]rune{'0', 'Ɩ', '2', 'Ɛ', '4', '5', '9', '7', '8', '6'}
 
 func RotateString(s string) string {
 	return strings.Map(RotateRune, s)
+}
+
+func TruncatePhrase(phrase string, max int) string {
+	if len(phrase) < max {
+		return phrase
+	}
+	return fmt.Sprintf("%s...", phrase[:max])
 }
 
 func RotateRune(r rune) rune {
@@ -142,4 +152,20 @@ func GetRandUtf8() string {
 	randDiff := uint32(rand.Int31n(int32(diff)))
 	theRune := lo + randDiff
 	return string(theRune)
+}
+
+func TokenizeWords(text string) []string {
+	res := []string{}
+	text = strings.ToLower(text)
+	text = strings.Replace(text, "\n", "", -1)
+	for _, word := range strings.Split(text, " ") {
+		word = strings.TrimSpace(word)
+		if notWords.FindAllString(word, 1) != nil {
+			continue
+		}
+		if word != "" {
+			res = append(res, word)
+		}
+	}
+	return res
 }

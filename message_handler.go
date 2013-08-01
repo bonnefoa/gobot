@@ -415,7 +415,11 @@ func handleBsTraining(state State, msg message.MsgPrivate) bool {
 func handleMeteo(state State, msg message.MsgPrivate) bool {
 	lowerMsg := strings.ToLower(msg.Msg)
 	if lowerMsg == "meteo" || lowerMsg == "météo" {
-		weather := meteo.FetchWeatherFromUrl(state.Conf.Meteo.Url)
+		weather, err := meteo.FetchWeatherFromUrl(state.Conf.Meteo.Url)
+                if err != nil {
+                        log.Printf("Erro on fetch weather : %q", err)
+                        return true
+                }
 		log.Printf("Fetched %q", weather)
 		state.ResponseChannel <- message.MsgSend{msg.Response(), strings.Join(weather, "|")}
 		return true

@@ -84,14 +84,19 @@ loop:
 	return res
 }
 
-func FetchWeatherFromUrl(url string) []string {
-	contents := uhtml.DownloadPage(url)
-	return ParseWeather(bytes.NewReader(contents))
+func FetchWeatherFromUrl(url string) ([]string, error) {
+	contents, err := uhtml.DownloadPage(url)
+        if err != nil { return []string{}, err }
+	return ParseWeather(bytes.NewReader(contents)), nil
 }
 
 func RainWatcher(meteo Meteo, responseChannel chan fmt.Stringer) {
 	for {
-		res := FetchWeatherFromUrl(meteo.Url)
+		res, err := FetchWeatherFromUrl(meteo.Url)
+                if err != nil {
+                        log.Printf("Got error on fetch : %s", res)
+                        continue
+                }
 		log.Printf("Fetched %q from %s", res, meteo.Url)
 		if hasRain(res) {
 			log.Printf("Got rain, sending to chan", res, meteo.Url)

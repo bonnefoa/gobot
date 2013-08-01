@@ -83,7 +83,7 @@ func connect() {
 	go readConnection(conn, readChannel, errorChannel)
 	go join(conf, responseChannel)
 	go metapi.SearchWorker(piQueryChannel, responseChannel)
-	go bsmeter.BsWorker(bsQueryChannel, responseChannel)
+	go bsmeter.BsWorker(conf.BsConf, bsQueryChannel, responseChannel)
 	go meteo.RainWatcher(conf.Meteo, responseChannel)
 
 	for {

@@ -10,10 +10,10 @@ import (
 	"net/http/cookiejar"
 	"regexp"
 	"strings"
+	bstrings "github.com/bonnefoa/gobot/utils/strings"
 )
 
 var reUrls, _ = regexp.Compile("https?://[^ ]*")
-var notWords, _ = regexp.Compile("[^a-zA-Z]+")
 
 func ExtractUrls(mess string) []string {
 	urls := reUrls.FindAllString(mess, -1)
@@ -32,44 +32,28 @@ func cleanTitle(title string) string {
 	return title
 }
 
-func DownloadPage(url string) []byte {
+func DownloadPage(url string) ([]byte, error) {
 	opts := &cookiejar.Options{
 		PublicSuffixList: publicsuffix.List,
 	}
 	jar, err := cookiejar.New(opts)
 	if err != nil {
 		log.Printf("Error on jar creation : %v\n", err)
-		return []byte{}
+		return []byte{}, err
 	}
 	client := &http.Client{Jar: jar}
 	resp, err := client.Get(url)
 	if err != nil {
 		log.Printf("Got error : %v\n", err)
-		return []byte{}
+		return []byte{}, err
 	}
 	defer resp.Body.Close()
-	content, errRead := ioutil.ReadAll(resp.Body)
-	if errRead != nil {
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
 		log.Printf("Got error : %v\n", err)
-		return []byte{}
+		return []byte{}, err
 	}
-	return content
-}
-
-func TokenizeWords(text string) []string {
-	res := []string{}
-	text = strings.ToLower(text)
-	text = strings.Replace(text, "\n", "", -1)
-	for _, word := range strings.Split(text, " ") {
-		word = strings.TrimSpace(word)
-		if notWords.FindAllString(word, 1) != nil {
-			continue
-		}
-		if word != "" {
-			res = append(res, word)
-		}
-	}
-	return res
+	return content, nil
 }
 
 func TokenizePage(r io.Reader) ([]string, string) {
@@ -89,7 +73,7 @@ loop:
 				title = cleanTitle(text)
 				continue
 			}
-			res = append(res, TokenizeWords(text)...)
+			res = append(res, bstrings.TokenizeWords(text)...)
 		case html.EndTagToken:
 			tn, _ := z.TagName()
 			if string(tn) == "title" {
