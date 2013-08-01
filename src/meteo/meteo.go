@@ -86,7 +86,6 @@ func ParseWeather(r io.Reader) []string{
 
 func FetchWeatherFromUrl(url string) []string {
         contents := uhtml.DownloadPage(url)
-        log.Printf("content is %s", contents)
         return ParseWeather(bytes.NewReader(contents))
 }
 
