@@ -16,8 +16,10 @@ import (
 	"math/big"
 	"math/rand"
 	"os"
+	"os/user"
 	"runtime"
 	"runtime/pprof"
+        "path/filepath"
 )
 
 type Trigger struct {
@@ -48,8 +50,18 @@ type State struct {
 	BsQueryChannel  chan bsmeter.BsQuery
 }
 
+func expandTilde(path string) string {
+        usr, _ := user.Current()
+        dir := usr.HomeDir
+        if path[:2] == "~/" {
+                path = filepath.Join(dir, path[2:])
+        }
+        return path
+}
+
 func readConfigurationFile(filename string) BotConf {
-	file, err := os.Open(filename)
+        expandedFilename := expandTilde(filename)
+	file, err := os.Open(expandedFilename)
 	if err != nil {
 		log.Fatal("Could not open file %s, %s\n", filename, err)
 	}
@@ -143,7 +155,7 @@ func connect() {
 }
 
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
-var confFile = flag.String("conffile", "gobot.json", "Conf path")
+var confFile = flag.String("conffile", "~/.gobot/gobot.json", "Conf path")
 
 func main() {
 	flag.Parse()
