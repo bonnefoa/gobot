@@ -118,3 +118,11 @@ func TestParsePdf(t *testing.T) {
         parsedText, _ := ioutil.ReadAll(res)
         assert.AssertEquals(t, strings.TrimSpace(string(parsedText)), "Hello World\n\n1")
 }
+
+func TestMostProbas(t *testing.T) {
+        p1 := prob{"b", 0.5}
+        p2 := prob{"a", 0.9}
+        p3 := prob{"a", 0.9}
+        ps := probs{p1, p2, p3}
+        assert.AssertEquals(t, ps.MostSignificantProbas(2), probs{p2, p1})
+}

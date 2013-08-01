@@ -2,6 +2,7 @@ package bsmeter
 
 import (
 	"math"
+	"sort"
 )
 
 const scaleGood = 2
@@ -39,4 +40,21 @@ func (p probs) Combined() float64 {
 		denum *= (1 - prob.proba)
 	}
 	return num / (num + denum)
+}
+
+func (p probs) MostSignificantProbas(n int) probs {
+        res := probs{}
+	sort.Sort(p)
+        precWord := ""
+        for _, v := range p {
+                if v.word == precWord {
+                        continue
+                }
+                precWord = v.word
+                res = append(res, v)
+                if len(res) >= n {
+                        return res
+                }
+        }
+	return res
 }
