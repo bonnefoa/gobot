@@ -12,10 +12,7 @@ ifeq ($(VERBOSE), 1)
 GO_OPTIONS += -v
 endif
 
-GIT_COMMIT = $(shell git rev-parse --short HEAD)
-GIT_STATUS = $(shell test -n "`git status --porcelain`" && echo "+CHANGES")
-
-BUILD_OPTIONS = -a -ldflags "-X main.GITCOMMIT $(GIT_COMMIT)$(GIT_STATUS)"
+BUILD_OPTIONS = -a 
 
 SRC_DIR := $(GOPATH)/src
 
@@ -37,7 +34,6 @@ $(GOBOT_BIN): $(GOBOT_DIR)
 $(GOBOT_DIR):
 	@mkdir -p $(dir $@)
 	@if [ -h $@ ]; then rm -f $@; fi; ln -sf $(CURDIR)/ $@
-	@(cd $(GOBOT_MAIN); go get -d $(GO_OPTIONS))
 
 deps: $(GOBOT_DIR)
 
