@@ -199,7 +199,7 @@ func (bsState *BsState) evaluateHtml(strUrl string, v interface{}) (*BsResult, e
                 parsedUrl, err := url.Parse(tv)
                 if err != nil { return nil, err }
                 var pageContent []byte
-                if parsedUrl.Scheme == "http" {
+                if parsedUrl.Scheme == "http" || parsedUrl.Scheme == "https" {
                         pageContent, err = html.DownloadPage(tv)
                 } else {
                         pageContent, err = ioutil.ReadFile(tv)
@@ -215,7 +215,7 @@ func (bsState *BsState) evaluateHtml(strUrl string, v interface{}) (*BsResult, e
 func (bsState *BsState) evaluatePdf(strUrl string) (*BsResult, error) {
         parsedUrl, err := url.Parse(strUrl)
         pdfFile := strUrl
-        if parsedUrl.Scheme == "http" {
+        if parsedUrl.Scheme == "http" || parsedUrl.Scheme == "https" {
                 content, err := html.DownloadPage(parsedUrl.String())
                 if err != nil { return nil, err }
                 pdfFile = savePdfToText(parsedUrl, content, "/tmp/temp_pdf")
