@@ -1,3 +1,4 @@
+SHELL := /bin/bash
 GOBOT_PACKAGE := github.com/bonnefoa/gobot
 BUILD_SRC := build_src
 BUILD_PATH := ${BUILD_SRC}/src/${GOBOT_PACKAGE}
@@ -7,7 +8,7 @@ BUILD_DIR := $(CURDIR)/.gopath
 GOPATH ?= $(BUILD_DIR)
 export GOPATH
 
-GO_OPTIONS ?= -a -ldflags='-w'
+GO_OPTIONS ?= -ldflags='-w'
 ifeq ($(VERBOSE), 1)
 GO_OPTIONS += -v
 endif
@@ -54,3 +55,6 @@ endif
 
 fmt:
 	@gofmt -s -l -w .
+
+test: 
+	@go test $(GO_OPTIONS) $(shell find . -iname '*_test.go' | xargs -I{} dirname {} | sort | uniq | sed -rn 's`\.`$(GOBOT_PACKAGE)`p') 2>&1 | tee >( grep test\ \-i | `sed -rn "s/.*(go\ test[^']+).*/ \1 /p"` )
