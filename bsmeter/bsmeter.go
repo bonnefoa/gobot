@@ -4,7 +4,7 @@ import (
         "log"
         "strings"
         "fmt"
-        "irc/message"
+        "github.com/bonnefoa/gobot/message"
         "path"
         "path/filepath"
         "os"
@@ -13,7 +13,7 @@ import (
         "io/ioutil"
         "bytes"
         "os/exec"
-        "utils/html"
+        "github.com/bonnefoa/gobot/utils/html"
 )
 
 const bsFile = "bsState"

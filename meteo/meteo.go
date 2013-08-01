@@ -1,7 +1,7 @@
 package meteo
 
 import (
-        uhtml "utils/html"
+        uhtml "github.com/bonnefoa/gobot/utils/html"
         html "code.google.com/p/go.net/html"
         "io"
         "strings"
@@ -9,7 +9,7 @@ import (
         "fmt"
         "regexp"
         "time"
-        "irc/message"
+        "github.com/bonnefoa/gobot/message"
         "log"
 )
 

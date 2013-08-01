@@ -3,7 +3,7 @@ package bsmeter
 import (
         "log"
         "math"
-        "utils/utilint"
+        "github.com/bonnefoa/gobot/utils/utilint"
         "encoding/json"
         "os"
         "sort"

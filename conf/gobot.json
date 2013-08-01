@@ -1,0 +1,16 @@
+{
+        "server" : "irc_url:port"
+        , "channel" : "#geek"
+        , "password" : "a_pass"
+        , "db" : "./gobot.db"
+        , "name" : "gobot"
+        , "realname" : "GoBot"
+        , "admin" : "admin!~admin@admin.fr"
+        , "topper" : "top!~top@top.fr"
+        , "help" : "Make a bet by giving a date (rfc 822, 850, 1123, 3339 or 15h04, 15:04, 15:04:05). Print current scores with the <scores> command. Bet are closed on topper's top. You can't change your bet if your bet time is in the past or in less than 4 minutes"
+        , "timeout" : { }
+        , "triggers" : [
+                { "words" : ["puke"], "ispuke" : true },
+                { "words" : ["ping"], "results" : ["pong"] },
+        ]
+}

@@ -1,14 +1,14 @@
 package metapi
 
 import (
-        "irc/message"
+        "github.com/bonnefoa/gobot/message"
         "math"
         "math/big"
         "sort"
         "strings"
         "fmt"
         "strconv"
-        "utils/utilint"
+        "github.com/bonnefoa/gobot/utils/utilint"
         "os"
         "encoding/json"
         "log"

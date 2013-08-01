@@ -1,9 +1,11 @@
 package bet
 
-import "testing"
-import "time"
-import "os"
-import "testing/assert"
+import (
+    "testing"
+    "time"
+    "os"
+    "testing/assert"
+)
 
 func TestParseDate(t *testing.T) {
         var err error

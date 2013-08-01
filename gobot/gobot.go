@@ -1,23 +1,23 @@
 package main
 
 import (
-        "irc/message"
+        "github.com/bonnefoa/gobot/message"
         "log"
         "crypto/tls"
         "fmt"
         "encoding/json"
         "os"
-        "irc/bet"
+        "github.com/bonnefoa/gobot/bet"
         "database/sql"
         "flag"
         "math/rand"
         "math/big"
         cryptrand "crypto/rand"
-        "irc/metapi"
+        "github.com/bonnefoa/gobot/metapi"
         "runtime"
         "runtime/pprof"
-        "bsmeter"
-        "meteo"
+        "github.com/bonnefoa/gobot/bsmeter"
+        "github.com/bonnefoa/gobot/meteo"
 )
 
 type Trigger struct {

@@ -1,19 +1,53 @@
-PARSER  = "src/irc/message/parser.go"
-SQLITE  = "src/github.com/mattn/go-sqlite3/sqlite3.go"
+GOBOT_PACKAGE := github.com/bonnefoa/gobot
+BUILD_SRC := build_src
+BUILD_PATH := ${BUILD_SRC}/src/${GOBOT_PACKAGE}
 
-$(SQLITE): 
-	go get github.com/mattn/go-sqlite3
+BUILD_DIR := $(CURDIR)/.gopath
 
-$(PARSER):
-	go tool yacc -o $(PARSER) src/irc/message/parser.y;
+GOPATH ?= $(BUILD_DIR)
+export GOPATH
 
-test: $(PARSER) $(SQLITE)
-	go test -i irc/message
-	go test irc/message
+GO_OPTIONS ?= -a -ldflags='-w'
+ifeq ($(VERBOSE), 1)
+GO_OPTIONS += -v
+endif
 
-metapi.prof: 
-	go build irc/metapi
-	./metapi -cpuprofile=metapi.prof
+GIT_COMMIT = $(shell git rev-parse --short HEAD)
+GIT_STATUS = $(shell test -n "`git status --porcelain`" && echo "+CHANGES")
 
-gobot: $(PARSER) $(SQLITE)
-	go build irc/gobot
+BUILD_OPTIONS = -a -ldflags "-X main.GITCOMMIT $(GIT_COMMIT)$(GIT_STATUS)"
+
+SRC_DIR := $(GOPATH)/src
+
+GOBOT_DIR := $(SRC_DIR)/$(GOBOT_PACKAGE)
+GOBOT_MAIN := $(GOBOT_DIR)/gobot
+
+GOBOT_BIN_RELATIVE := bin/gobot
+GOBOT_BIN := $(CURDIR)/$(GOBOT_BIN_RELATIVE)
+
+.PHONY: all clean $(GOBOT_BIN) $(GOBOT_DIR)
+
+all: $(GOBOT_BIN)
+
+$(GOBOT_BIN): $(GOBOT_DIR)
+	@mkdir -p  $(dir $@)
+	@(cd $(GOBOT_MAIN); go build $(GO_OPTIONS) $(BUILD_OPTIONS) -o $@)
+	@echo $(GOBOT_BIN_RELATIVE) is created.
+
+$(GOBOT_DIR):
+	@mkdir -p $(dir $@)
+	@if [ -h $@ ]; then rm -f $@; fi; ln -sf $(CURDIR)/ $@
+	@(cd $(GOBOT_MAIN); go get -d $(GO_OPTIONS))
+
+deps: $(GOBOT_DIR)
+
+clean:
+	@rm -rf $(dir $(GOBOT_BIN))
+ifeq ($(GOPATH), $(BUILD_DIR))
+	@rm -rf $(BUILD_DIR)
+else ifneq ($(GOBOT_DIR), $(realpath $(GOBOT_DIR)))
+	@rm -f $(GOBOT_DIR)
+endif
+
+fmt:
+	@gofmt -s -l -w .

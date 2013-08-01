@@ -1,21 +1,21 @@
 package main
 
 import (
-        "irc/message"
+        "github.com/bonnefoa/gobot/message"
         "log"
         "fmt"
-        "irc/bet"
+        "github.com/bonnefoa/gobot/bet"
         "database/sql"
         "strings"
         "time"
         "errors"
         "math/rand"
-        "utils/utilstring"
-        "utils/html"
+        "github.com/bonnefoa/gobot/utils/utilstring"
+        "github.com/bonnefoa/gobot/utils/html"
         "strconv"
-        "irc/metapi"
-        "bsmeter"
-        "meteo"
+        "github.com/bonnefoa/gobot/metapi"
+        "github.com/bonnefoa/gobot/bsmeter"
+        "github.com/bonnefoa/gobot/meteo"
 )
 
 func placeBet(state State, nick string, msg message.MsgPrivate, ts time.Time, isAdmin bool) {
