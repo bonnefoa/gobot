@@ -1,4 +1,4 @@
-package main
+package gobot
 
 import (
 	"database/sql"
@@ -428,7 +428,7 @@ var handlers = []func(State, message.MsgPrivate) bool{handleBsTraining, handleBs
 	handleBet, handleRollback, handleReset, handleBetSpecificTimeZone, handleTimezoneConversion,
 	handlePutf8, handleDodo, handleTroll, handleTriggers, handleMetapi, handleRotate, handleMeteo}
 
-func handleMessage(state State, msg message.MsgPrivate) {
+func HandleMessage(state State, msg message.MsgPrivate) {
 	log.Printf("Received message %s", msg.Msg)
 	for i, handler := range handlers {
 		if handler(state, msg) {

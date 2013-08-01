@@ -3,8 +3,6 @@ package main
 import (
 	cryptrand "crypto/rand"
 	"crypto/tls"
-	"database/sql"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/bonnefoa/gobot/bet"
@@ -12,66 +10,14 @@ import (
 	"github.com/bonnefoa/gobot/message"
 	"github.com/bonnefoa/gobot/metapi"
 	"github.com/bonnefoa/gobot/meteo"
+	"github.com/bonnefoa/gobot"
 	"log"
 	"math/big"
 	"math/rand"
 	"os"
-	"os/user"
 	"runtime"
 	"runtime/pprof"
-        "path/filepath"
 )
-
-type Trigger struct {
-	Words   []string
-	Results []string
-	IsPuke  bool
-}
-
-type BotConf struct {
-	Server   string
-	Password string
-	Channel  string
-	Db       string
-	Admin    string
-	Topper   string
-	Help     string
-	Name     string
-	RealName string
-	Triggers []Trigger
-	Meteo    meteo.Meteo
-}
-
-type State struct {
-	Db              *sql.DB
-	Conf            *BotConf
-	ResponseChannel chan fmt.Stringer
-	PiQueryChannel  chan metapi.PiQuery
-	BsQueryChannel  chan bsmeter.BsQuery
-}
-
-func expandTilde(path string) string {
-        usr, _ := user.Current()
-        dir := usr.HomeDir
-        if path[:2] == "~/" {
-                path = filepath.Join(dir, path[2:])
-        }
-        return path
-}
-
-func readConfigurationFile(filename string) BotConf {
-        expandedFilename := expandTilde(filename)
-	file, err := os.Open(expandedFilename)
-	if err != nil {
-		log.Fatal("Could not open file %s, %s\n", filename, err)
-	}
-	dec := json.NewDecoder(file)
-	var conf BotConf
-	if err := dec.Decode(&conf); err != nil {
-		log.Fatal(err)
-	}
-	return conf
-}
 
 func readConnection(conn *tls.Conn, readChannel chan []byte, errorChannel chan error) {
 	for {
@@ -85,42 +31,42 @@ func readConnection(conn *tls.Conn, readChannel chan []byte, errorChannel chan e
 	}
 }
 
-func dispatchMessage(state State, msg string) {
+func dispatchMessage(state gobot.State, msg string) {
 	for _, single_msg := range message.ParseMessage(msg) {
 		switch parsed := single_msg.(type) {
 		case message.MsgPing:
 			state.ResponseChannel <- message.MsgPong{parsed.Ping}
 		case message.MsgPrivate:
 			log.Printf("Received message %s from %s\n", parsed.Msg, parsed.User)
-			handleMessage(state, parsed)
+			gobot.HandleMessage(state, parsed)
 		default:
 			log.Printf("No switch matched for %s!\n", parsed)
 		}
 	}
 }
 
-func join(conf BotConf, responseChannel chan fmt.Stringer) {
+func join(conf gobot.BotConf, responseChannel chan fmt.Stringer) {
 	responseChannel <- message.MsgPassword{conf.Password}
 	responseChannel <- message.MsgNick{conf.Name}
 	responseChannel <- message.MsgUser{conf.Name, conf.RealName}
 	responseChannel <- message.MsgJoin{conf.Channel}
 }
 
-func initializeRandom(conf *BotConf) {
+func initializeRandom(conf *gobot.BotConf) {
 	max := big.NewInt(2 ^ 60)
 	seed, _ := cryptrand.Int(cryptrand.Reader, max)
 	rand.Seed(seed.Int64())
 }
 
 func connect() {
-	conf := readConfigurationFile(*confFile)
+	conf := gobot.ReadConfigurationFile(*confFile)
 	initializeRandom(&conf)
 
 	db := bet.InitBase(conf.Db)
 	responseChannel := make(chan fmt.Stringer)
 	piQueryChannel := make(chan metapi.PiQuery)
 	bsQueryChannel := make(chan bsmeter.BsQuery)
-	state := State{Db: db, Conf: &conf, ResponseChannel: responseChannel,
+	state := gobot.State{Db: db, Conf: &conf, ResponseChannel: responseChannel,
 		PiQueryChannel: piQueryChannel,
 		BsQueryChannel: bsQueryChannel}
 	readChannel := make(chan []byte)
