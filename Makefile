@@ -1,4 +1,4 @@
-SHELL := /bin/bash
+SHELL := /usr/bin/env bash
 GOBOT_PACKAGE := github.com/bonnefoa/gobot
 BUILD_SRC := build_src
 BUILD_PATH := ${BUILD_SRC}/src/${GOBOT_PACKAGE}
