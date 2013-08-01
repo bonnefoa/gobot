@@ -1,7 +1,10 @@
 package assert
 
-import "testing"
-import "bytes"
+import (
+        "testing"
+        "bytes"
+        "reflect"
+)
 
 func AssertMapEquals(t *testing.T, a map[string]int, b map[string]int) {
 	for k := range a {
@@ -34,7 +37,7 @@ func AssertFalse(t *testing.T, cond bool) {
 }
 
 func AssertEquals(t *testing.T, a interface{}, b interface{}) {
-	if a != b {
+	if !reflect.DeepEqual(a, b) {
 		t.Logf("%#v != %#v\n", a, b)
 		t.FailNow()
 	}
