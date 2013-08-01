@@ -14,7 +14,7 @@ type BsConf struct {
 
 func (c *BsConf) loadBsState() *BsState {
 	file, err := os.Open(c.StateFile)
-	bsState := &BsState{}
+	bsState := defaultBsState()
 	if err != nil {
 		return bsState
 	}

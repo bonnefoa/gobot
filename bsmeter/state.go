@@ -26,6 +26,16 @@ type BsState struct {
         BsConf
 }
 
+func defaultBsState() *BsState {
+        bsState := new(BsState)
+        bsState.GoodWords = map[string]int{}
+        bsState.BadWords = map[string]int{}
+        bsState.BsProba = map[string]float64{}
+        bsState.BsConf = BsConf{}
+        return bsState
+}
+
+
 func (s *BsState) save() {
 	file, _ := os.OpenFile(s.StateFile,
 		os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 400)
@@ -141,6 +151,7 @@ func (bsState *BsState) processTrainQuery(query BsQuery) ([]string, error) {
 
 func (bsState *BsState) walker(bs bool) func(path string, info os.FileInfo, err error) error {
 	return func(path string, info os.FileInfo, err error) error {
+                log.Printf("Walking in %s\n", path)
 		if err != nil {
 			log.Printf("Error on walk : %s\n", err)
 			return err
@@ -252,8 +263,8 @@ func (bsState *BsState) processReload() {
 	bsState.GoodWords = map[string]int{}
 	bsState.BadWords = map[string]int{}
 	bsState.BsProba = map[string]float64{}
-	filepath.Walk(bsState.getPhraseStorage(true), bsState.walker(true))
-	filepath.Walk(bsState.getPhraseStorage(false), bsState.walker(false))
+	filepath.Walk(bsState.getStorage(true), bsState.walker(true))
+	filepath.Walk(bsState.getStorage(false), bsState.walker(false))
 	bsState.trainWithTextFile(bsState.getPhraseStorage(true), true)
 	bsState.trainWithTextFile(bsState.getPhraseStorage(false), false)
 }
