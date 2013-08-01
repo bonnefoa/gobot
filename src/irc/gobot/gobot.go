@@ -26,11 +26,6 @@ type Trigger struct {
         IsPuke bool
 }
 
-type Meteo struct {
-        Url string
-        Channel string
-}
-
 type BotConf struct {
         Server string
         Password string
@@ -42,7 +37,7 @@ type BotConf struct {
         Name string
         RealName string
         Triggers []Trigger
-        Meteo    Meteo
+        Meteo    meteo.Meteo
 }
 
 type State struct {
@@ -132,7 +127,7 @@ func connect() {
         go join(conf, responseChannel)
         go metapi.SearchWorker(piQueryChannel, responseChannel)
         go bsmeter.BsWorker(bsQueryChannel, responseChannel)
-        go meteo.RainWatcher(conf.Meteo.Url, conf.Meteo.Channel, responseChannel)
+        go meteo.RainWatcher(conf.Meteo, responseChannel)
 
         for {
                 select {

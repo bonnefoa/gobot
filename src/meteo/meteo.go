@@ -13,6 +13,12 @@ import (
         "log"
 )
 
+type Meteo struct {
+        Url string
+        Channel string
+        Period int // In minutes
+}
+
 var reRain, _ = regexp.Compile("Pluie [fm]")
 
 func hasRain(parsed []string) bool {
@@ -84,14 +90,15 @@ func FetchWeatherFromUrl(url string) []string {
         return ParseWeather(bytes.NewReader(contents))
 }
 
-func RainWatcher(url string, channel string, responseChannel chan fmt.Stringer) {
+func RainWatcher(meteo Meteo, responseChannel chan fmt.Stringer) {
         for {
-                res := FetchWeatherFromUrl(url)
-                log.Printf("Fetched %q from %s", res, url)
+                res := FetchWeatherFromUrl(meteo.Url)
+                log.Printf("Fetched %q from %s", res, meteo.Url)
                 if hasRain(res) {
-                        log.Printf("Got rain, sending to chan", res, url)
-                        responseChannel<- message.MsgSend{channel, strings.Join(res, "|")}
+                        log.Printf("Got rain, sending to chan", res, meteo.Url)
+                        responseChannel<- message.MsgSend{meteo.Channel,
+                            strings.Join(res, "|")}
                 }
-                <-time.After(time.Minute * 30)
+                <-time.After(time.Duration(meteo.Period) * time.Minute)
         }
 }
