@@ -10,7 +10,7 @@ import (
 	"github.com/bonnefoa/gobot/metapi"
 	"github.com/bonnefoa/gobot/meteo"
 	"github.com/bonnefoa/gobot/utils/html"
-	"github.com/bonnefoa/gobot/utils/utilstring"
+	bstrings "github.com/bonnefoa/gobot/utils/strings"
 	"log"
 	"math/rand"
 	"strconv"
@@ -248,16 +248,16 @@ func handleReset(state State, msg message.MsgPrivate) bool {
 }
 
 func pickMessage(possibleMessages []string) string {
-	hearts := utilstring.GetHearts(4)
+	hearts := bstrings.GetHearts(4)
 	exclamations := strings.Repeat("!", rand.Intn(4))
-	msg := utilstring.RandomString(possibleMessages)
+	msg := bstrings.RandomString(possibleMessages)
 	return fmt.Sprintf("%s %s%s %s", hearts, msg, exclamations, hearts)
 }
 
 func getNickInMessage(db *sql.DB, msg string) string {
 	users := bet.GetUsers(db)
 	for _, n := range strings.Split(msg, " ") {
-		if utilstring.StringContains(n, users) {
+		if bstrings.StringContains(n, users) {
 			return fmt.Sprintf("%s: ", n)
 		}
 	}
@@ -265,14 +265,14 @@ func getNickInMessage(db *sql.DB, msg string) string {
 }
 
 func getPukeMessage(msg string) string {
-	hearts := utilstring.GetHearts(25)
+	hearts := bstrings.GetHearts(25)
 	return fmt.Sprintf("%s", hearts)
 }
 
 func handleTrigger(state State, msg message.MsgPrivate, trigger Trigger) bool {
 	lowerMsg := strings.ToLower(msg.Msg)
-	lowerMsg = strings.Map(utilstring.KeepLettersAndSpace, lowerMsg)
-	if !utilstring.TriggerIn(trigger.Words, lowerMsg) {
+	lowerMsg = strings.Map(bstrings.KeepLettersAndSpace, lowerMsg)
+	if !bstrings.TriggerIn(trigger.Words, lowerMsg) {
 		return false
 	}
 	resp := ""
@@ -302,7 +302,7 @@ func handlePutf8(state State, msg message.MsgPrivate) bool {
 	numChars := rand.Intn(25)
 	res := make([]string, numChars)
 	for i := 0; i < numChars; i++ {
-		res[i] = utilstring.ColorString(utilstring.GetRandUtf8())
+		res[i] = bstrings.ColorString(bstrings.GetRandUtf8())
 	}
 	nick := getNickInMessage(state.Db, msg.Msg)
 	state.ResponseChannel <- message.MsgSend{msg.Response(), fmt.Sprintf("%s%s", nick, strings.Join(res, " "))}
@@ -314,7 +314,7 @@ func handleDodo(state State, msg message.MsgPrivate) bool {
 		return false
 	}
 	zStr := strings.Repeat("Zz", rand.Intn(25))
-	res := utilstring.ColorStringSlice(utilstring.ShuffleString(zStr))
+	res := bstrings.ColorStringSlice(bstrings.ShuffleString(zStr))
 	nick := getNickInMessage(state.Db, msg.Msg)
 	state.ResponseChannel <- message.MsgSend{msg.Response(), fmt.Sprintf("%s%s", nick, res)}
 	return true
@@ -359,7 +359,7 @@ func handleRotate(state State, msg message.MsgPrivate) bool {
 	if !strings.HasPrefix(strings.ToLower(msg.Msg), "rotate") {
 		return false
 	}
-	state.ResponseChannel <- message.MsgSend{msg.Response(), utilstring.RotateString(msg.Msg[6:])}
+	state.ResponseChannel <- message.MsgSend{msg.Response(), bstrings.RotateString(msg.Msg[6:])}
 	return true
 }
 
