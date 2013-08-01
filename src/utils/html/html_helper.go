@@ -2,12 +2,14 @@ package html
 
 import (
         "net/http"
+        "net/http/cookiejar"
         "log"
         html "code.google.com/p/go.net/html"
         "strings"
         "io/ioutil"
         "io"
         "regexp"
+        publicsuffix "code.google.com/p/go.net/publicsuffix"
 )
 
 var reUrls, _ = regexp.Compile("https?://[^ ]*")
@@ -31,7 +33,16 @@ func cleanTitle(title string) string {
 }
 
 func DownloadPage(url string) []byte {
-    resp, err := http.Get(url)
+    opts := &cookiejar.Options{
+        PublicSuffixList: publicsuffix.List,
+    }
+    jar, err := cookiejar.New(opts)
+    if err != nil {
+        log.Printf("Error on jar creation : %v\n", err)
+        return []byte{}
+    }
+    client := &http.Client{ Jar: jar }
+    resp, err := client.Get(url)
     if err != nil {
         log.Printf("Got error : %v\n", err)
         return []byte{}
@@ -93,4 +104,3 @@ func TokenizePage(r io.Reader) ([]string, string) {
         }
         return res, title
 }
-
