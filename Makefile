@@ -22,11 +22,14 @@ GOBOT_MAIN := $(GOBOT_DIR)/gobot
 GOBOT_BIN_RELATIVE := bin/gobot
 GOBOT_BIN := $(CURDIR)/$(GOBOT_BIN_RELATIVE)
 
+IRC_PARSER_GO=$(GOBOT_DIR)/message/parser.go
+IRC_PARSER_YACC=$(GOBOT_DIR)/message/parser.y
+
 .PHONY: all clean $(GOBOT_BIN) $(GOBOT_DIR)
 
 all: $(GOBOT_BIN)
 
-$(GOBOT_BIN): $(GOBOT_DIR)
+$(GOBOT_BIN): $(GOBOT_DIR) $(IRC_PARSER_GO)
 	@mkdir -p  $(dir $@)
 	@(cd $(GOBOT_MAIN); go build $(GO_OPTIONS) $(BUILD_OPTIONS) -o $@)
 	@echo $(GOBOT_BIN_RELATIVE) is created.
@@ -34,6 +37,10 @@ $(GOBOT_BIN): $(GOBOT_DIR)
 $(GOBOT_DIR):
 	@mkdir -p $(dir $@)
 	@if [ -h $@ ]; then rm -f $@; fi; ln -sf $(CURDIR)/ $@
+	@(cd $(GOBOT_MAIN); go get -d $(GO_OPTIONS))
+
+$(IRC_PARSER_GO):
+	@go tool yacc -o $(IRC_PARSER_GO) $(IRC_PARSER_YACC)
 
 deps: $(GOBOT_DIR)
 
