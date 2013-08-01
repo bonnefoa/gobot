@@ -2,7 +2,7 @@ package main
 
 import (
 	"testing"
-	"testing/assert"
+	"github.com/bonnefoa/gobot/testing/assert"
 	"time"
 )
 

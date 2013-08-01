@@ -1,7 +1,9 @@
 package message
 
-import "testing"
-import "testing/assert"
+import (
+        "testing"
+	"github.com/bonnefoa/gobot/testing/assert"
+)
 
 func TestSimpleLexer(t *testing.T) {
 	res := gen_lex("toto", "NICK lol\r\n")

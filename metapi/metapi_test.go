@@ -1,7 +1,9 @@
 package metapi
 
-import "testing"
-import "testing/assert"
+import (
+        "testing"
+	"github.com/bonnefoa/gobot/testing/assert"
+)
 
 func TestConcatInt(t *testing.T) {
 	assert.AssertIntSliceEquals(t, []int{1, 2},

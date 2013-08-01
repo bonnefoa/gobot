@@ -2,7 +2,7 @@ package message
 
 import (
 	"testing"
-	"testing/assert"
+	"github.com/bonnefoa/gobot/testing/assert"
 )
 
 func TestMessage(t *testing.T) {

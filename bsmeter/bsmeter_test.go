@@ -6,14 +6,8 @@ import (
 	"net/url"
 	"os"
 	"testing"
-	"testing/assert"
+	"github.com/bonnefoa/gobot/testing/assert"
 )
-
-func TestExtractUrls(t *testing.T) {
-	urls := ExtractUrls("test http://w1 test 2 https://w2 https://imgur.com/toto.jpg")
-	assert.AssertStringSliceEquals(t, urls,
-		[]string{"http://w1", "https://w2", "https://imgur.com/toto"})
-}
 
 func TestEvaluateBs(t *testing.T) {
 	good := map[string]int{"jam": 10}
@@ -112,7 +106,7 @@ func TestParsePdf(t *testing.T) {
 	file, _ := os.Open("test.pdf")
 	parsedUrl, _ := url.Parse("http://test.pdf")
 	content, _ := ioutil.ReadAll(file)
-	f := savePdf(parsedUrl, content, "/tmp/test_pdf")
+	f := savePdfToText(parsedUrl, content, "/tmp/test_pdf")
 
 	res, _ := os.Open(f)
 	parsedText, _ := ioutil.ReadAll(res)

@@ -3,7 +3,7 @@ package bet
 import (
 	"os"
 	"testing"
-	"testing/assert"
+	"github.com/bonnefoa/gobot/testing/assert"
 	"time"
 )
 

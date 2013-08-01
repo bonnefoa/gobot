@@ -1,7 +1,9 @@
 package strings
 
-import "testing"
-import "testing/assert"
+import (
+        "testing"
+	"github.com/bonnefoa/gobot/testing/assert"
+)
 
 func TestReverse(t *testing.T) {
 	expected := "ƃɐ è ƃɐ"

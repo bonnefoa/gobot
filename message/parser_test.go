@@ -3,7 +3,7 @@ package message
 import (
 	"fmt"
 	"testing"
-	"testing/assert"
+	"github.com/bonnefoa/gobot/testing/assert"
 )
 
 func testMessageParse(t *testing.T, msg fmt.Stringer) {
