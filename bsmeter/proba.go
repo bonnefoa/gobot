@@ -2,7 +2,7 @@ package bsmeter
 
 import (
 	"encoding/json"
-	"github.com/bonnefoa/gobot/utils/utilint"
+	bmath "github.com/bonnefoa/gobot/utils/math"
 	"log"
 	"math"
 	"os"
@@ -109,7 +109,7 @@ func (state *BsState) EvaluateBs(words []string) float64 {
 		prbs = append(prbs, prob{word, proba})
 	}
 	sort.Sort(prbs)
-	prbs = prbs[:utilint.MinInt(15, len(prbs))]
+	prbs = prbs[:bmath.MinInt(15, len(prbs))]
 	log.Printf("Most significant probas are %v\n", prbs)
 	return prbs.Combined()
 }

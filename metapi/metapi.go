@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/bonnefoa/gobot/message"
-	"github.com/bonnefoa/gobot/utils/utilint"
+	bmath "github.com/bonnefoa/gobot/utils/math"
 	"log"
 	"math"
 	"math/big"
@@ -152,8 +152,8 @@ func EstimatePi(iteration int) (*big.Rat, *big.Rat) {
 }
 
 func formatFoundResponse(pi string, num string, index int) string {
-	low := utilint.MaxInt(index-10, 0)
-	high := utilint.MinInt(index+len(num)+10, len(pi)-1)
+	low := bmath.MaxInt(index-10, 0)
+	high := bmath.MinInt(index+len(num)+10, len(pi)-1)
 	return fmt.Sprintf("Found %q at position %v, ...%s...", num, index, pi[low:high])
 }
 

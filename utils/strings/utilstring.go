@@ -1,4 +1,4 @@
-package utilstring
+package strings
 
 import (
 	"fmt"
