@@ -247,11 +247,15 @@ func handleReset(state State, msg message.MsgPrivate) bool {
 	return true
 }
 
-func pickMessage(possibleMessages []string) string {
-	hearts := bstrings.GetHearts(4)
-	exclamations := strings.Repeat("!", rand.Intn(4))
-	msg := bstrings.RandomString(possibleMessages)
-	return fmt.Sprintf("%s %s%s %s", hearts, msg, exclamations, hearts)
+func pickMessage(possibleMessages []string, repeated bool) string {
+    if !repeated {
+        msg := bstrings.RandomString(possibleMessages)
+        hearts := bstrings.GetHearts(4)
+        exclamations := strings.Repeat("!", rand.Intn(4))
+        return fmt.Sprintf("%s %s%s %s", hearts, msg, exclamations, hearts)
+    }
+    picked := bstrings.RandomString(possibleMessages)
+    return bstrings.GetShuffleColoredRepeat(picked, 25)
 }
 
 func getNickInMessage(db *sql.DB, msg string) string {
@@ -264,11 +268,6 @@ func getNickInMessage(db *sql.DB, msg string) string {
 	return ""
 }
 
-func getPukeMessage(msg string) string {
-	hearts := bstrings.GetHearts(25)
-	return fmt.Sprintf("%s", hearts)
-}
-
 func handleTrigger(state State, msg message.MsgPrivate, trigger Trigger) bool {
 	lowerMsg := strings.ToLower(msg.Msg)
 	lowerMsg = strings.Map(bstrings.KeepLettersAndSpace, lowerMsg)
@@ -277,11 +276,7 @@ func handleTrigger(state State, msg message.MsgPrivate, trigger Trigger) bool {
 	}
 	resp := ""
 	nick := getNickInMessage(state.Db, msg.Msg)
-	if trigger.IsPuke {
-		resp = getPukeMessage(lowerMsg)
-	} else {
-		resp = pickMessage(trigger.Results)
-	}
+    resp = pickMessage(trigger.Results, trigger.Repeated)
 	state.ResponseChannel <- message.MsgSend{msg.Response(), fmt.Sprintf("%s%s", nick, resp)}
 	return true
 }

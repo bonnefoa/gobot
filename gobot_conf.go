@@ -16,7 +16,7 @@ import (
 type Trigger struct {
 	Words   []string
 	Results []string
-	IsPuke  bool
+	Repeated  bool
 }
 
 type BotConf struct {

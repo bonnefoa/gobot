@@ -110,11 +110,15 @@ func ColorStringSlice(lst []string) string {
 	return strings.Join(res, "")
 }
 
+func GetShuffleColoredRepeat(chars string, number int) string {
+	repChars := strings.Repeat(chars, rand.Intn(number)+1)
+	shuffledChars := ShuffleString(repChars)
+	coloredChars := ColorStringSlice(shuffledChars)
+	return coloredChars
+}
+
 func GetHearts(number int) string {
-	hearts := strings.Repeat("❤♥♡", rand.Intn(number)+1)
-	shuffledHearts := ShuffleString(hearts)
-	strHearts := ColorStringSlice(shuffledHearts)
-	return strHearts
+    return GetShuffleColoredRepeat("❤♥♡", number)
 }
 
 func Truncate(msg string, max int) string {
