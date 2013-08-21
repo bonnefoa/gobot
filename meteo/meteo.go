@@ -19,7 +19,7 @@ type Meteo struct {
 	Period  int // In minutes
 }
 
-var reRain, _ = regexp.Compile("Pluie [fm]")
+var reRain, _ = regexp.Compile(".*Pluie [fm].*")
 
 func hasRain(parsed []string) bool {
 	for _, el := range parsed {
@@ -101,7 +101,7 @@ func RainWatcher(meteo Meteo, responseChannel chan fmt.Stringer) {
 		if hasRain(res) {
 			log.Printf("Got rain, sending to chan", res, meteo.Url)
 			responseChannel <- message.MsgSend{meteo.Channel,
-				strings.Join(res, "|")}
+				strings.Join(res, ", ")}
 		}
 		<-time.After(time.Duration(meteo.Period) * time.Minute)
 	}
