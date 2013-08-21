@@ -111,7 +111,7 @@ func ColorStringSlice(lst []string) string {
 }
 
 func GetHearts(number int) string {
-	hearts := strings.Repeat("❤♥", rand.Intn(number)+1)
+	hearts := strings.Repeat("❤♥♡", rand.Intn(number)+1)
 	shuffledHearts := ShuffleString(hearts)
 	strHearts := ColorStringSlice(shuffledHearts)
 	return strHearts
