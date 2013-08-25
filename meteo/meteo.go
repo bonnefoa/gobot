@@ -17,6 +17,7 @@ type Meteo struct {
 	Url     string
 	Channel string
 	Period  int // In minutes
+	hasRain bool
 }
 
 var reRain, _ = regexp.Compile(".*Pluie [fm].*")
@@ -98,8 +99,11 @@ func RainWatcher(meteo Meteo, responseChannel chan fmt.Stringer) {
                         continue
                 }
 		log.Printf("Fetched %q from %s", res, meteo.Url)
-		if hasRain(res) {
-			log.Printf("Got rain, sending to chan", res, meteo.Url)
+		oldRain := meteo.hasRain
+		meteo.hasRain = hasRain(res)
+		if meteo.hasRain && !oldRain {
+			meteo.hasRain = true
+			log.Println("Got rain, sending to chan\n", res, meteo.Url)
 			responseChannel <- message.MsgSend{meteo.Channel,
 				strings.Join(res, ", ")}
 		}
