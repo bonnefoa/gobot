@@ -18,6 +18,7 @@ type Trigger struct {
 	Results  []string
 	Repeated bool
 	Cron     string
+	Dest     string
 }
 
 type BotConf struct {

@@ -17,6 +17,7 @@ import (
 	"os"
 	"runtime"
 	"runtime/pprof"
+    "time"
 )
 
 func readConnection(conn *tls.Conn, readChannel chan []byte, errorChannel chan error) {
@@ -43,6 +44,20 @@ func dispatchMessage(state gobot.State, msg string) {
 			log.Printf("No switch matched for %s!\n", parsed)
 		}
 	}
+}
+
+func cronMessage(conf gobot.BotConf, responseChannel chan fmt.Stringer) {
+    for _, tr := range conf.Triggers {
+        if tr.Cron == "" {
+            continue
+        }
+        next := bet.ParseCron(tr.Cron, time.Now())
+        <-time.After(time.Duration(next))
+        for {
+            responseChannel <- message.MsgSend{tr.Dest, tr.Results[0]}
+            <-time.After(time.Hour * 24 * 7)
+        }
+    }
 }
 
 func join(conf gobot.BotConf, responseChannel chan fmt.Stringer) {
@@ -85,6 +100,7 @@ func connect() {
 	go metapi.SearchWorker(piQueryChannel, responseChannel)
 	go bsmeter.BsWorker(conf.BsConf, bsQueryChannel, responseChannel)
 	go meteo.RainWatcher(conf.Meteo, responseChannel)
+	go cronMessage(conf, responseChannel)
 
 	for {
 		select {
