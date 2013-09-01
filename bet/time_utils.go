@@ -36,8 +36,9 @@ func ParseCron(cr string, ref time.Time) int64 {
         deltaDay = refWeekday + 7 - weekday
     }
     ref.AddDate(0, 0, int(deltaDay))
+	local, _ := time.LoadLocation("Local")
     nextEvent := time.Date(ref.Year(), ref.Month(), ref.Day(),
-        int(hour), int(min), 0, 0, nil)
+        int(hour), int(min), 0, 0, local)
     duration := ref.Sub(nextEvent)
     return int64(duration.Seconds())
 }
