@@ -18,6 +18,23 @@ import (
 	"time"
 )
 
+func cronHandler(conf BotConf, responseChannel chan fmt.Stringer) {
+    now := time.Now()
+    for _, tr := range conf.Triggers {
+        if tr.Cron != "" {
+            next := bet.ParseCron(tr.Cron, now)
+            go func() {
+                <-time.After(time.Duration(next))
+                for {
+                    responseChannel <- message.MsgSend{tr.Results[0],
+                        tr.Results[1]}
+                    <-time.After(time.Hour * 7)
+                }
+            }()
+        }
+    }
+}
+
 func placeBet(state State, nick string, msg message.MsgPrivate, ts time.Time, isAdmin bool) {
 	err := bet.AddUserBet(state.Db, nick, ts, isAdmin)
 	if err == nil {
