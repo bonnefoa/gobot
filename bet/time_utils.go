@@ -39,6 +39,6 @@ func ParseCron(cr string, ref time.Time) int64 {
 	local, _ := time.LoadLocation("Local")
     nextEvent := time.Date(ref.Year(), ref.Month(), ref.Day(),
         int(hour), int(min), 0, 0, local)
-    duration := ref.Sub(nextEvent)
+    duration := nextEvent.Sub(ref)
     return int64(duration.Seconds())
 }
