@@ -17,6 +17,7 @@ type Trigger struct {
 	Words    []string
 	Results  []string
 	Repeated bool
+	ProcCommand  []string
 	Cron     string
 	Dest     string
 }

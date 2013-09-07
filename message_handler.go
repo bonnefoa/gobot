@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"os/exec"
 )
 
 func cronHandler(conf BotConf, responseChannel chan fmt.Stringer) {
@@ -264,7 +265,15 @@ func handleReset(state State, msg message.MsgPrivate) bool {
 	return true
 }
 
-func pickMessage(possibleMessages []string, repeated bool) string {
+func pickMessage(possibleMessages []string, repeated bool, procCommand []string) string {
+    if len(procCommand) > 0 {
+        cmd := exec.Command(procCommand[0], procCommand[1:]...)
+        r, err := cmd.Output()
+        if err != nil {
+            return ""
+        }
+        return string(r)
+    }
     if !repeated {
         msg := bstrings.RandomString(possibleMessages)
         hearts := bstrings.GetHearts(4)
@@ -293,8 +302,13 @@ func handleTrigger(state State, msg message.MsgPrivate, trigger Trigger) bool {
 	}
 	resp := ""
 	nick := getNickInMessage(state.Db, msg.Msg)
-    resp = pickMessage(trigger.Results, trigger.Repeated)
-	state.ResponseChannel <- message.MsgSend{msg.Response(), fmt.Sprintf("%s%s", nick, resp)}
+    resp = pickMessage(trigger.Results, trigger.Repeated, trigger.ProcCommand)
+    lines := strings.Split(resp, "\n")
+    for _, l := range lines{
+        if l != "" {
+            state.ResponseChannel <- message.MsgSend{msg.Response(), fmt.Sprintf("%s%s", nick, l)}
+        }
+    }
 	return true
 }
 
