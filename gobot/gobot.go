@@ -18,6 +18,7 @@ import (
 	"runtime"
 	"runtime/pprof"
     "time"
+    "strings"
 )
 
 func readConnection(conn *tls.Conn, readChannel chan []byte, errorChannel chan error) {
@@ -110,7 +111,8 @@ func connect() {
 		case err := <-errorChannel:
 			log.Fatal("Got error %q\n", err)
 		case response := <-responseChannel:
-			log.Printf("Sending response %q\n", response.String())
+            msg := strings.Replace(response.String(), "\t", " ", -1)
+			log.Printf("Sending response %q\n", msg)
 			fmt.Fprintf(conn, response.String())
 		}
 	}
