@@ -5,20 +5,20 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"github.com/bonnefoa/gobot"
 	"github.com/bonnefoa/gobot/bet"
 	"github.com/bonnefoa/gobot/bsmeter"
 	"github.com/bonnefoa/gobot/message"
 	"github.com/bonnefoa/gobot/metapi"
 	"github.com/bonnefoa/gobot/meteo"
-	"github.com/bonnefoa/gobot"
 	"log"
 	"math/big"
 	"math/rand"
 	"os"
 	"runtime"
 	"runtime/pprof"
-    "time"
-    "strings"
+	"strings"
+	"time"
 )
 
 func readConnection(conn *tls.Conn, readChannel chan []byte, errorChannel chan error) {
@@ -34,8 +34,8 @@ func readConnection(conn *tls.Conn, readChannel chan []byte, errorChannel chan e
 }
 
 func dispatchMessage(state gobot.State, msg string) {
-	for _, single_msg := range message.ParseMessage(msg) {
-		switch parsed := single_msg.(type) {
+	for _, singleMsg := range message.ParseMessage(msg) {
+		switch parsed := singleMsg.(type) {
 		case message.MsgPing:
 			state.ResponseChannel <- message.MsgPong{parsed.Ping}
 		case message.MsgPrivate:
@@ -48,17 +48,17 @@ func dispatchMessage(state gobot.State, msg string) {
 }
 
 func cronMessage(conf gobot.BotConf, responseChannel chan fmt.Stringer) {
-    for _, tr := range conf.Triggers {
-        if tr.Cron == "" {
-            continue
-        }
-        next := bet.ParseCron(tr.Cron, time.Now())
-        <-time.After(time.Duration(next))
-        for {
-            responseChannel <- message.MsgSend{tr.Dest, tr.Results[0]}
-            <-time.After(time.Hour * 24 * 7)
-        }
-    }
+	for _, tr := range conf.Triggers {
+		if tr.Cron == "" {
+			continue
+		}
+		next := bet.ParseCron(tr.Cron, time.Now())
+		<-time.After(time.Duration(next))
+		for {
+			responseChannel <- message.MsgSend{tr.Dest, tr.Results[0]}
+			<-time.After(time.Hour * 24 * 7)
+		}
+	}
 }
 
 func join(conf gobot.BotConf, responseChannel chan fmt.Stringer) {
@@ -111,9 +111,9 @@ func connect() {
 		case err := <-errorChannel:
 			log.Fatal("Got error %q\n", err)
 		case response := <-responseChannel:
-            msg := strings.Replace(response.String(), "\t", " ", -1)
+			msg := strings.Replace(response.String(), "\t", " ", -1)
 			log.Printf("Sending response %q\n", msg)
-			fmt.Fprintf(conn, response.String())
+			fmt.Fprintf(conn, msg)
 		}
 	}
 }
