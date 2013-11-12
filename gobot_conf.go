@@ -14,12 +14,13 @@ import (
 )
 
 type Trigger struct {
-	Words    []string
-	Results  []string
-	Repeated bool
-	ProcCommand  []string
-	Cron     string
-	Dest     string
+	Words       []string
+	Results     []string
+	Repeated    bool
+	ProcCommand []string
+	Cron        string
+	Dest        string
+	PutHearts   bool
 }
 
 type BotConf struct {

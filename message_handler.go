@@ -265,22 +265,25 @@ func handleReset(state State, msg message.MsgPrivate) bool {
 	return true
 }
 
-func pickMessage(possibleMessages []string, repeated bool, procCommand []string) string {
-    if len(procCommand) > 0 {
-        cmd := exec.Command(procCommand[0], procCommand[1:]...)
+func pickMessage(trigger Trigger) string {
+    if len(trigger.ProcCommand) > 0 {
+        cmd := exec.Command(trigger.ProcCommand[0], trigger.ProcCommand[1:]...)
         r, err := cmd.Output()
         if err != nil {
             return ""
         }
         return string(r)
     }
-    if !repeated {
-        msg := bstrings.RandomString(possibleMessages)
-        hearts := bstrings.GetHearts(4)
+    if !trigger.Repeated {
+        msg := bstrings.RandomString(trigger.Results)
         exclamations := strings.Repeat("!", rand.Intn(4))
-        return fmt.Sprintf("%s %s%s %s", hearts, msg, exclamations, hearts)
+        if trigger.PutHearts {
+            hearts := bstrings.GetHearts(4)
+            return fmt.Sprintf("%s%s%s%s", hearts, msg, exclamations, hearts)
+        }
+        return fmt.Sprintf("%s%s", msg, exclamations)
     }
-    picked := bstrings.RandomString(possibleMessages)
+    picked := bstrings.RandomString(trigger.Results)
     return bstrings.GetShuffleColoredRepeat(picked, 25)
 }
 
@@ -302,7 +305,7 @@ func handleTrigger(state State, msg message.MsgPrivate, trigger Trigger) bool {
 	}
 	resp := ""
 	nick := getNickInMessage(state.Db, msg.Msg)
-    resp = pickMessage(trigger.Results, trigger.Repeated, trigger.ProcCommand)
+    resp = pickMessage(trigger)
     lines := strings.Split(resp, "\n")
     for _, l := range lines{
         if l != "" {
